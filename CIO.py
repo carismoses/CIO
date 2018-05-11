@@ -61,55 +61,24 @@ def get_object_accel(s):
     return s[39:42]
 
 #### HELPER FUNCTIONS ####
-def get_dist(line, point):
-    return abs(line[0]*point[0] + line[1]*point[1] + line[2])/ \
-            np.sqrt(line[0]**2 + line[1]**2)
-
 def calc_e(s, objects):
     _, box, _, _ = objects
     o = box.pose
 
-    # get roj in world frame then project onto all objects
+    # get ro: roj in world frame
     _, roj, cj = get_contact_info(s)
     rj = roj + np.tile(o, (3, 1))
+
+    # get pi_j: project rj onto all contact surfaces
     pi_j = np.zeros((N_contacts, 2))
     for object in objects:
         if object.contact_index != None:
-            pi_j[object.contact_index,:] = object.project_point(rj[object.contact_index,:]) ## ground does not keep pose in rj, need to just use pose... need rj from floor?
+            pi_j[object.contact_index,:] = object.project_point(rj[object.contact_index,:])
 
-    for j in range(N_contacts):
-        # get a point and orientation for a point on each side of the object
-        points_on_face = np.zeros((4,3))
-        # right face
-        points_on_face[0,:] = [o[0] + hw*np.cos(o[2]),
-                              o[1] - hw*np.sin(o[2]),
-                              o[2]]
-        # top face
-        points_on_face[1,:] = [o[0] + hh*np.sin(o[2]),
-                              o[1] + hh*np.cos(o[2]),
-                              o[2]]
-        # left face
-        points_on_face[2,:] = [o[0] - hw*np.cos(o[2]),
-                              o[1] + hw*np.sin(o[2]),
-                              o[2]]
-        # bottom face
-        points_on_face[3,:] = [o[0] - hh*np.sin(o[2]),
-                              o[1] + hh*np.cos(o[2]),
-                              o[2]]
-
-    # projection of rj onto object (currently lines through face of object, NOT necessarily on object) TODO
+    # get pi_o: project rj onto object
     pi_o = np.zeros((N_contacts,2))
-
-    # find dist to each face for each contact and project onto the closest face
     for j in range(N_contacts):
-        face_dists = np.zeros(4)
-        face_lines = np.zeros((4,3))
-        for face in range(4):
-            face_lines[face,:] = get_line(points_on_face[face,:])
-            face_dists[face] = get_dist(face_lines[face,:], rj[j,:])
-        min_dist = min(face_dists)
-        min_face = np.argmin(face_dists)
-        pi_o[j,:] = project_to_line(face_lines[min_face,:], rj[j,:])
+        pi_o[j,:] = box.project_point(rj[j,:])
 
     e_O = pi_o - rj
     e_H = pi_j - rj
@@ -117,6 +86,7 @@ def calc_e(s, objects):
 
 #### INITIALIZE DECISION VARIABLES ####
 def init_vars(objects):
+    _, box, _, _ = objects
     # create the initial system state: s0
     s0 = np.zeros(len_s)
 
@@ -131,15 +101,18 @@ def init_vars(objects):
     # j = 0 gripper 1 contact
     # j = 1 gripper 2 contact
     # j = 2 ground contact
+    # rO is in object (box) frame
     # ground contact force:
-    box_pose = objects[1].pose
-    box_width = objects[1].width
+    box_pose = box.pose
+    box_width = box.width
     f2 = mass*gravity
     con0 = [0.0, 0.0, 0.0, 0.0, 0.0]
     con1 = [0.0, 0.0, 0.0, 0.0, 0.0]
-    con2 = [0.0, f2, 0.0, box_pose[0] + box_width/2.0, 1.0]
+    con2 = [0.0, f2, box_width/2.0, 0.0, 1.0]
 
     s0[9:len_s] = (con0 + con1 + con2)
+
+    # initialize traj to all be the same as the starting state
     S0 = np.zeros(len_S)
     for t in range(T_final-1):
         S0[t*len_s:t*len_s+len_s] = s0
@@ -185,10 +158,10 @@ def get_s_t(S, t):
     return S[(t-1)*len_s:(t-1)*len_s+len_s]
 
 #### OBJECTIVE FUNCTIONS ####
-def L_CI(s,t):
-    e_O, e_H = calc_e(s)
+def L_CI(s,t, objects, world_traj):
+    e_O, e_H = calc_e(s, objects)
     _, _, cj = get_contact_info(s)
-    e_O_tm1, e_H_tm1 = e_Os[:,t-1,:], e_Hs[:,t-1,:]
+    e_O_tm1, e_H_tm1 = world_traj.e_Os[:,t-1,:], world_traj.e_Hs[:,t-1,:]
 
     # calculate the edots
     e_O_dot = (e_O - e_O_tm1)/delT
@@ -240,7 +213,7 @@ def L_physics(s):
     # calc change in angular momentum
     l_dot = I*oa[2]
 
-    # discourage large forces
+    # discourage large contact forces
     term = 0
     for j in range(N_contacts):
         term += np.linalg.norm(fj[j])**2
@@ -250,13 +223,10 @@ def L_physics(s):
 
     # calc L_cone
     # get unit normal to contact surfaces at pi_j using surface line
-    nj = np.zeros((N_contacts,2))
-    for j in range(N_contacts):
-        nj[j,:] = [0,1]
-
     L_cone = 0
+    nj = np.array((0.0, 1.0))
     for j in range(N_contacts):
-        L_cone += max(np.acos(np.dot(fj[j], nj[j,:])) - np.arctan(mu), 0)**2
+        L_cone += max(np.arccos(np.dot(fj[j], nj)) - np.arctan(mu), 0)**2
 
     cost = L_physics + L_cone
     return cost
@@ -264,27 +234,12 @@ def L_physics(s):
 # includes 1) limits on finger and arm joint angles (doesn't apply)
 #          2) distance from fingertips to palms limit (doesn't apply)
 #          3) TODO: collisions between fingers
-def L_kinematics(s):
+def L_kinematics(s, objects):
     cost = 0
-    # penalize collisions between
-    # 1) the object and the floor
-    corners = get_corners(s) #TODO
-    for corner in corners:
-        cost += -1*min(0, corner[1])
-
-    # 2) the end points of the gripper and the floor
-    endpoints1 = get_endpoints(s,1) # TODO
-    endpoints2 = get_endpoints(s,2) # TODO
-    cost += -1*min(0,endpoints1[0][1])
-    cost += -1*min(0,endpoints1[1][1])
-    cost += -1*min(0,endpoints2[0][1])
-    cost += -1*min(0,endpoints2[1][1])
-
-    # 3) grippers inside of box #TODO
+    # penalize collisions between all objects
 
 
     return cost
-
 
 # doesn't apply
 def L_pad(s):
@@ -313,17 +268,16 @@ def L(S, s0, objects):
     # calculate the interpolated values between the key frames (for now skip) -> longer S
     S_aug = interpolate_s(s0, S)
     world_traj = WorldTraj(s0, S_aug, objects, N_contacts, T_final)
-    world_traj.e_O[:,0,:], world_traj.e_Hs[:,0,:] = calc_e(s0, objects)
+    world_traj.e_Os[:,0,:], world_traj.e_Hs[:,0,:] = calc_e(s0, objects)
     cost = 0
-    #for t in range(1,T_final):
-    #    s_aug_t = get_s_aug_t(S_aug,t)
-    #    cost += L_CI(s_aug_t, t) + L_physics(s_aug_t) + L_kinmatics(s_aug_t) + \
+    for t in range(1,T_final):
+        s_aug_t = get_s_aug_t(S_aug,t)
+        cost += L_CI(s_aug_t, t, objects, world_traj) + L_physics(s_aug_t) + L_kinmatics(s_aug_t) #+ \
     #            L_pad(s_aug_t) + L_task(s_aug_t, t)
     return cost
 
 #### MAIN FUNCTION ####
 def CIO(goal, objects):
-    pdb.set_trace()
     s0, S0 = init_vars(objects)
     x, f, d = fmin_l_bfgs_b(func=L, x0=S0, args=(s0, objects), approx_grad=True)
     return x,f,d

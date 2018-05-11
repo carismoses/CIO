@@ -355,7 +355,7 @@ def L(S):
 
 #### MAIN FUNCTION ####
 def main():
-    #pdb.set_trace()
+    pdb.set_trace()
     S0 = init_vars()
     x, f, d = fmin_l_bfgs_b(func=L, x0=S0, approx_grad=True)
     for t in range(1,Tfinal):
