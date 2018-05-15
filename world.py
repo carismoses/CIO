@@ -1,5 +1,6 @@
 import pdb
 import numpy as np
+from util import len_s
 
 class WorldTraj(object):
     def __init__(self, s0, S, objects, Ncontacts, Tfinal):
@@ -9,11 +10,14 @@ class WorldTraj(object):
         self.step(0)
 
         # initialize to zero
-        self.e_Os, self.e_Hs = np.zeros((Ncontacts, Tfinal+1, 2)), np.zeros((Ncontacts, Tfinal+1, 2))
+        self.e_Os, self.e_Hs = np.zeros((Ncontacts, Tfinal, 2)), np.zeros((Ncontacts, Tfinal, 2))
 
     def step(self, t):
         for object in self.objects:
-            object.step(self.S,t)
+            if t == 0:
+                object.step(self.s0,t)
+            else:
+                object.step(self.S,t)
 
 # world origin is left bottom with 0 deg being along the x-axis (+ going ccw), all poses are in world frame
 class Object(object):
@@ -29,8 +33,12 @@ class Object(object):
 
     def step(self, S, t):
         if self.pose_index != None:
-            self.pose = S[3*self.pose_index*t:3*self.pose_index*t+2]
-            self.angle = S[3*self.pose_index*t+2]
+            if t == 0:
+                self.pose = S[3*self.pose_index:3*self.pose_index+2]
+                self.angle = S[3*self.pose_index+2]
+            else:
+                self.pose = S[3*self.pose_index+(t-1)*len_s:3*self.pose_index+(t-1)*len_s+2]
+                self.angle = S[3*self.pose_index+(t-1)*len_s+2]
 
     def check_collisions(self, col_object):
         pts = self.discretize()
@@ -66,25 +74,27 @@ class Line(Object):
 
     def line_eqn(self):
         # check for near straight lines
-        # slope close to m = 0
+        # line close to horizontal
         if abs(self.angle) < self.rad_bounds or abs(self.angle - np.pi) < self.rad_bounds:
-            m = 0.
-            b = self.pose[1]
-        # slope close to m = inf
+            a = 0.
+            b = 1.
+            c = -self.pose[1]
+        # line close to vertical
         elif abs(self.angle - np.pi/2.) < self.rad_bounds or abs(self.angle - 3.*np.pi/2.) < self.rad_bounds:
-            m = 1.
-            b = self.pose[0]
+            a = 1.
+            b = 0.
+            c = -self.pose[0]
         else:
-            m = np.sin(self.angle)/np.cos(self.angle)
-            b = self.pose[1] - m*self.pose[0]
-        return m, b
+            slope = np.sin(self.angle)/np.cos(self.angle)
+            int = self.pose[1] - slope*self.pose[0]
+            a = -slope
+            b = 1
+            c = -int
+        return a,b,c
 
     # project a given point onto this line (or endpoint)
     def project_point(self, point):
-        slope, int = self.line_eqn()
-        a = -slope
-        b = 1
-        c = -int
+        a,b,c = self.line_eqn()
         n = b*point[0] - a*point[1]
         d = a**2 + b**2
         proj_point = np.array([b*n - a*c, -1*a*n - b*c])/d
@@ -94,7 +104,7 @@ class Line(Object):
         if not (proj_point[0] <= max(endpoints[0][0], endpoints[1][0]) and\
             proj_point[0] >= min(endpoints[0][0], endpoints[1][0]) and\
             proj_point[1] <= max(endpoints[0][1], endpoints[1][1]) and\
-            proj_point[0] >= min(endpoints[0][1], endpoints[1][1])):
+            proj_point[1] >= min(endpoints[0][1], endpoints[1][1])):
 
             dist0 = get_dist(proj_point, endpoints[0])
             dist1 = get_dist(proj_point, endpoints[1])

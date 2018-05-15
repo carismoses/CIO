@@ -71,8 +71,14 @@ def get_object_pos_ind():
 def get_contact_info_ind():
     return 9,24
 
+def get_contact_ind():
+    return 13, 18, 23
+
+def get_roj_ind():
+    return (11,13), (16,18), (21,23)
+
 def get_gripper1_vel_ind():
-    return 24,27,
+    return 24,27
 
 def get_gripper1_accel_ind():
     return 27,30
@@ -127,3 +133,15 @@ def get_s_aug_t(S_aug, t):
 
 def get_s_t(S, t):
     return S[(t-1)*len_s:(t-1)*len_s+len_s]
+
+#### HELPER FUNCTIONS ####
+def get_bounds():
+    ind = get_contact_ind()
+    bounds = []
+    for t in range(1,T_final):
+        for v in range(len_s):
+            if v in ind:
+                bounds.append((0.,1.))
+            else:
+                bounds.append((None,None))
+    return bounds

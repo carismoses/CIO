@@ -46,7 +46,7 @@ def make_test_traj(goal, objects):
 def main():
     goal, objects = init_objects()
     if testing:
-        s0, S0 = make_test_traj(goal, objects)
+        s0, S0 = make_test_traj(objects)
         x,f,d = CIO(goal, objects, s0, S0)
     else:
         x,f,d = CIO(goal, objects)

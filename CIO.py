@@ -27,9 +27,9 @@ def init_vars(objects):
     box_pose = box.pose
     box_width = box.width
     f2 = mass*gravity
-    con0 = [0.0, 0.0, 0.0, 5.0, 0.0]
-    con1 = [0.0, 0.0, 0.0, 0.0, 0.0]
-    con2 = [0.0, f2, box_width/2.0, 0.0, 1.0]
+    con0 = [0.0, 0.0, 0.0, 0.0, 0.0] # gripper1
+    con1 = [0.0, 0.0, 10.0, 0.0, 0.0] # gripper2
+    con2 = [0.0, f2, box_width/2.0, 0.0, 1.0] # ground
 
     s0[9:len_s] = (con0 + con1 + con2)
 
@@ -47,8 +47,7 @@ def calc_e(s, objects):
     # get ro: roj in world frame
     fj, roj, cj = get_contact_info(s)
     rj = roj + np.tile(o, (3, 1))
-    #print("gripper1 x direction force: ",fj[0][0])
-    #print("box pose: ", o)
+
     # get pi_j: project rj onto all contact surfaces
     pi_j = np.zeros((N_contacts, 2))
     for object in objects:
@@ -65,8 +64,9 @@ def calc_e(s, objects):
     return e_O, e_H
 
 #### OBJECTIVE FUNCTIONS ####
-def L_CI(s,t, objects, world_traj):
+def L_CI(s, t, objects, world_traj):
     e_O, e_H = calc_e(s, objects)
+    world_traj.e_Os[:,t,:], world_traj.e_Hs[:,t,:] = e_O, e_H
     _, _, cj = get_contact_info(s)
     e_O_tm1, e_H_tm1 = world_traj.e_Os[:,t-1,:], world_traj.e_Hs[:,t-1,:]
 
@@ -182,23 +182,25 @@ def L_task(s, goal, t):
 def L(S, s0, objects, goal):
     # calculate the interpolated values between the key frames (for now skip) -> longer S
     S_aug = interpolate_s(s0, S)
-    world_traj = WorldTraj(s0, S_aug, objects, N_contacts, T_final)
+    world_traj = WorldTraj(s0, S, objects, N_contacts, T_final)
     world_traj.e_Os[:,0,:], world_traj.e_Hs[:,0,:] = calc_e(s0, objects)
     cost = 0
     for t in range(1,T_final):
         world_traj.step(t)
         s_aug_t = get_s_aug_t(S_aug,t)
-        cost += L_task(s_aug_t, goal, t)
+        cost += L_CI(s_aug_t, t, objects, world_traj)
         #cost += L_CI(s_aug_t, t, objects, world_traj) + L_physics(s_aug_t) + \
         #        L_pad(s_aug_t) + L_task(s_aug_t, goal, t) #+ L_kinematics(s_aug_t, objects) +
-    print(cost)
+    #print(cost)
     return cost
 
 #### MAIN FUNCTION ####
 def CIO(goal, objects, s0 = (), S0 = ()):
+    pdb.set_trace()
     if s0 == ():
         s0, S0 = init_vars(objects)
-    x, f, d = fmin_l_bfgs_b(func=L, x0=S0, args=(s0, objects, goal), approx_grad=True)
+    bounds = get_bounds()
+    x, f, d = fmin_l_bfgs_b(func=L, x0=S0, args=(s0, objects, goal), approx_grad=True, bounds=bounds)
 
     # for comparing hand made traj and init traj
     #hms0, hmS0 = s0, S0
@@ -207,6 +209,7 @@ def CIO(goal, objects, s0 = (), S0 = ()):
     #print("Init cost: ", L(inS0, ins0, objects, goal))
 
     # output result
+    print("final state: \n", x)
     # pose trajectory
     print("pose trajectory:")
     for t in range(1,T_final):
@@ -215,11 +218,12 @@ def CIO(goal, objects, s0 = (), S0 = ()):
         print(box_pose, t)
 
     # contact forces
-    #print("forces:")
+    print("contact forces:")
     for t in range(1,T_final):
         s_t = get_s_t(x, t)
         contact_info = get_contact_info(s_t)
         force = contact_info[0]
-        #print(force, t)
+        contact = contact_info[2]
+        print(t, ":\n", force, contact)
 
     return x,f,d
