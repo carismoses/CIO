@@ -6,9 +6,14 @@ class WorldTraj(object):
         self.s0 = s0
         self.S = S
         self.objects = objects
+        self.step(0)
 
         # initialize to zero
         self.e_Os, self.e_Hs = np.zeros((Ncontacts, Tfinal+1, 2)), np.zeros((Ncontacts, Tfinal+1, 2))
+
+    def step(self, t):
+        for object in self.objects:
+            object.step(self.S,t)
 
 # world origin is left bottom with 0 deg being along the x-axis (+ going ccw), all poses are in world frame
 class Object(object):
@@ -22,10 +27,19 @@ class Object(object):
         self.step_size = step_size
         self.rad_bounds = 1e-1
 
-    def check_collisions(self, object):
-        for object in world:
-            if object != self:
-                cost = object.check_point_collisions(self.discretize())
+    def step(self, S, t):
+        if self.pose_index != None:
+            self.pose = S[3*self.pose_index*t:3*self.pose_index*t+2]
+            self.angle = S[3*self.pose_index*t+2]
+
+    def check_collisions(self, col_object):
+        pts = self.discretize()
+        max_col_dist = 0.0
+        for pt in pts:
+            col_dist = col_object.check_inside(pt)
+            if col_dist > max_col_dist:
+                max_col_dist = col_dist
+        return max_col_dist
 
 class Line(Object):
     def __init__(self, pose = (0.0,0.0), angle = 0.0, length = 10.0,\
@@ -34,13 +48,16 @@ class Line(Object):
         super(Line,self).__init__(pose, angle, actuated, pose_index, contact_index,\
                                     step_size)
 
-    """
-    def endpoints(self):
-
     def discretize(self):
+        N_points = np.floor(self.length/self.step_size) + 1
+        points = np.array((N_points,2))
+        points[0,:], points[N_points-1,:] = self.get_endpoints()
+        for i in range(1,N_points-1):
+            points[i,:] = points[i-1,:] + self.step_size*np.array((np.cos(self.angle), np.sin(self.angle)))
+        return points
 
-    def check_point_collisions(self, points):
-    """
+    def check_inside(self, point):
+        pass #TODO
 
     def get_endpoints(self):
         endpoint0 = self.pose
@@ -95,13 +112,13 @@ class Rectangle(Object):
         super(Rectangle,self).__init__(pose, angle, actuated, pose_index, contact_index,\
                                         step_size)
         self.lines = self.make_lines() # rectangles are made up of 4 line objects
-    """
-    def corners(self):
+
 
     def discretize(self):
+        pass#TODO
 
-    def check_point_collisions(self, points):
-    """
+    def check_inside(self, point):
+        pass#TODO
 
     # defines list of lines in clockwise starting from left line
     def make_lines(self):

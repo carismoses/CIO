@@ -1,88 +1,9 @@
 # CIO implementation
-from scipy.optimize import fmin_l_bfgs_b
+from scipy.optimize import fmin_l_bfgs_b, minimize
 import numpy as np
 import pdb
 from world import WorldTraj
-
-#### PARAMETERS ####
-N_contacts = 3 # 2 grippers and 1 ground contact
-T_final = 10 # time steps to optimize over
-delT = 1
-mass = 10.0 # mass
-gravity = 10.0 # gravity
-mu = 0.5 # friction coefficient
-len_s = 24
-len_s_aug = 24 + 18 # includes vels and accels
-len_S = len_s*(T_final-1)
-len_S_aug = len_s_aug*(T_final-1) # will be more when interpolate between s values
-lamb = 1.0 # lambda is a L_physics parameter
-small_ang = .25
-hw, hh = 5.0, 5.0 # half-width, half-height
-
-#### GET FUNCTIONS ####
-def get_gripper1_pos(s):
-    return s[0:3]
-
-def get_gripper2_pos(s):
-    return s[3:6]
-
-def get_object_pos(s):
-    return s[6:9]
-
-def get_contact_info(s):
-    fj = np.zeros((N_contacts,2))
-    roj = np.zeros((N_contacts,2))
-    cj = np.zeros(N_contacts)
-
-    for j in range(N_contacts):
-        fj[j,:] = [s[9 + j*5], s[10 + j*5]]
-    for j in range(N_contacts):
-        roj[j,:] = [s[11 + j*5], s[12 + j*5]]
-    for j in range(N_contacts):
-        cj[j] = s[13 + j*5]
-    return fj, roj, cj
-
-def get_gripper1_vel(s):
-    return s[24:27]
-
-def get_gripper1_accel(s):
-    return s[27:30]
-
-def get_gripper2_vel(s):
-    return s[30:33]
-
-def get_gripper2_accel(s):
-    return s[33:36]
-
-def get_object_vel(s):
-    return s[36:39]
-
-def get_object_accel(s):
-    return s[39:42]
-
-#### HELPER FUNCTIONS ####
-def calc_e(s, objects):
-    _, box, _, _ = objects
-    o = box.pose
-
-    # get ro: roj in world frame
-    _, roj, cj = get_contact_info(s)
-    rj = roj + np.tile(o, (3, 1))
-
-    # get pi_j: project rj onto all contact surfaces
-    pi_j = np.zeros((N_contacts, 2))
-    for object in objects:
-        if object.contact_index != None:
-            pi_j[object.contact_index,:] = object.project_point(rj[object.contact_index,:])
-
-    # get pi_o: project rj onto object
-    pi_o = np.zeros((N_contacts,2))
-    for j in range(N_contacts):
-        pi_o[j,:] = box.project_point(rj[j,:])
-
-    e_O = pi_o - rj
-    e_H = pi_j - rj
-    return e_O, e_H
+from util import *
 
 #### INITIALIZE DECISION VARIABLES ####
 def init_vars(objects):
@@ -106,7 +27,7 @@ def init_vars(objects):
     box_pose = box.pose
     box_width = box.width
     f2 = mass*gravity
-    con0 = [0.0, 0.0, 0.0, 0.0, 0.0]
+    con0 = [0.0, 0.0, 0.0, 5.0, 0.0]
     con1 = [0.0, 0.0, 0.0, 0.0, 0.0]
     con2 = [0.0, f2, box_width/2.0, 0.0, 1.0]
 
@@ -118,44 +39,30 @@ def init_vars(objects):
         S0[t*len_s:t*len_s+len_s] = s0
     return s0, S0
 
-#### AUGMENT DECISION VARIABLE ####
-def interpolate_s(s0, S):
-    S_aug = np.zeros(len_S_aug)
-    # should interpolate between S values (skip for now)
-    for t in range(1,T_final):
-        # if t == 0 use initial vel and accel, otherwise use last calculated ones
-        # previous time step
-        if t == 1:
-            # initially vel and accel are zero
-            s_tm1 = np.concatenate([s0, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, \
-                          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
-        else:
-            s_tm1 = get_s_aug_t(S_aug, t)
-        # current time step
-        s_t = get_s_t(S, t)
+#### HELPER FUNCTIONS ####
+def calc_e(s, objects):
+    _, box, _, _ = objects
+    o = box.pose
 
-        # gripper1
-        g1vel_t = (get_gripper1_pos(s_t) - get_gripper1_pos(s_tm1))/delT
-        g1accel_t = (g1vel_t - get_gripper1_vel(s_tm1))/delT
+    # get ro: roj in world frame
+    fj, roj, cj = get_contact_info(s)
+    rj = roj + np.tile(o, (3, 1))
+    #print("gripper1 x direction force: ",fj[0][0])
+    #print("box pose: ", o)
+    # get pi_j: project rj onto all contact surfaces
+    pi_j = np.zeros((N_contacts, 2))
+    for object in objects:
+        if object.contact_index != None:
+            pi_j[object.contact_index,:] = object.project_point(rj[object.contact_index,:])
 
-        # gripper2
-        g2vel_t = (get_gripper2_pos(s_t) - get_gripper2_pos(s_tm1))/delT
-        g2accel_t = (g2vel_t - get_gripper2_vel(s_tm1))/delT
+    # get pi_o: project rj onto object
+    pi_o = np.zeros((N_contacts,2))
+    for j in range(N_contacts):
+        pi_o[j,:] = box.project_point(rj[j,:])
 
-        # object
-        ovel_t = (get_object_pos(s_t) - get_object_pos(s_tm1))/delT
-        oaccel_t = (ovel_t - get_object_vel(s_tm1))/delT
-
-        s_aug_t = np.concatenate([s_t, g1vel_t, g1accel_t, g2vel_t, g2accel_t, ovel_t, oaccel_t])
-        S_aug[(t-1)*len_s_aug:(t-1)*len_s_aug+len_s_aug] = s_aug_t
-
-    return S_aug
-
-def get_s_aug_t(S_aug, t):
-    return S_aug[(t-1)*len_s_aug:(t-1)*len_s_aug+len_s_aug]
-
-def get_s_t(S, t):
-    return S[(t-1)*len_s:(t-1)*len_s+len_s]
+    e_O = pi_o - rj
+    e_H = pi_j - rj
+    return e_O, e_H
 
 #### OBJECTIVE FUNCTIONS ####
 def L_CI(s,t, objects, world_traj):
@@ -217,7 +124,7 @@ def L_physics(s):
     term = 0
     for j in range(N_contacts):
         term += np.linalg.norm(fj[j])**2
-    term = lamb*term
+    term = phys_lamb*term
 
     L_physics =  np.linalg.norm(f_tot - p_dot)**2 + np.linalg.norm(m_tot - l_dot)**2 + term
 
@@ -226,7 +133,11 @@ def L_physics(s):
     L_cone = 0
     nj = np.array((0.0, 1.0))
     for j in range(N_contacts):
-        L_cone += max(np.arccos(np.dot(fj[j], nj)) - np.arctan(mu), 0)**2
+        if np.linalg.norm(fj[j]) > 0.0: # only calc if there is a contact force
+            cosangle_num = np.dot(fj[j], nj)
+            cosangle_den = np.dot(np.linalg.norm(fj[j]), np.linalg.norm(nj))
+            angle = np.arccos(cosangle_num/cosangle_den)
+            L_cone += max(angle - np.arctan(mu), 0)**2
 
     cost = L_physics + L_cone
     return cost
@@ -237,22 +148,26 @@ def L_physics(s):
 def L_kinematics(s, objects):
     cost = 0
     # penalize collisions between all objects
-
-
+    obj_num = 0
+    while obj_num < len(objects):
+        for col_object in objects[obj_num+1:]:
+            col_dist = objects[obj_num].check_collisions(col_object)
+            cost += col_lamb*col_dist
+            obj_num += 1
     return cost
 
 # doesn't apply
 def L_pad(s):
     return 0
 
-def L_task(s, t):
-    T_final, len_sk = args
-
+def L_task(s, goal, t):
     # l constraint: get object to desired pos
-    I = 1 if t == T_final else 0
+    I = 1 if t == (T_final-1) else 0
     hb = get_object_pos(s)
-    h_star = [5.0, 10.0, 0.0] # goal object pos
+    h_star = goal[1]
     l = I*np.linalg.norm(hb - h_star)**2
+    #if t == (T_final-1):
+    #    print("this is l: ",l)
 
     # small acceleration constraint (supposed to keep hand accel small, but
     # don't have a central hand so use grippers individually)
@@ -260,31 +175,51 @@ def L_task(s, t):
     g1_dotdot = get_gripper1_accel(s)
     g2_dotdot = get_gripper2_accel(s)
 
-    cost = l + lamb*(np.linalg.norm(o_dotdot)**2 + np.linalg.norm(g1_dotdot)**2 \
+    cost = l + task_lamb*(np.linalg.norm(o_dotdot)**2 + np.linalg.norm(g1_dotdot)**2 \
                 + np.linalg.norm(g2_dotdot)**2)
     return cost
 
-def L(S, s0, objects):
+def L(S, s0, objects, goal):
     # calculate the interpolated values between the key frames (for now skip) -> longer S
     S_aug = interpolate_s(s0, S)
     world_traj = WorldTraj(s0, S_aug, objects, N_contacts, T_final)
     world_traj.e_Os[:,0,:], world_traj.e_Hs[:,0,:] = calc_e(s0, objects)
     cost = 0
     for t in range(1,T_final):
+        world_traj.step(t)
         s_aug_t = get_s_aug_t(S_aug,t)
-        cost += L_CI(s_aug_t, t, objects, world_traj) + L_physics(s_aug_t) + L_kinmatics(s_aug_t) #+ \
-    #            L_pad(s_aug_t) + L_task(s_aug_t, t)
+        cost += L_task(s_aug_t, goal, t)
+        #cost += L_CI(s_aug_t, t, objects, world_traj) + L_physics(s_aug_t) + \
+        #        L_pad(s_aug_t) + L_task(s_aug_t, goal, t) #+ L_kinematics(s_aug_t, objects) +
+    print(cost)
     return cost
 
 #### MAIN FUNCTION ####
-def CIO(goal, objects):
-    s0, S0 = init_vars(objects)
-    x, f, d = fmin_l_bfgs_b(func=L, x0=S0, args=(s0, objects), approx_grad=True)
-    return x,f,d
+def CIO(goal, objects, s0 = (), S0 = ()):
+    if s0 == ():
+        s0, S0 = init_vars(objects)
+    x, f, d = fmin_l_bfgs_b(func=L, x0=S0, args=(s0, objects, goal), approx_grad=True)
 
-    # just for visualizing results
-    #for t in range(1,T_final):
-    #    s_t = get_s_t(x, t)
-    #    contact_info = get_contact_info(s_t)
-    #    print(contact_info, t)
-    #print(x)
+    # for comparing hand made traj and init traj
+    #hms0, hmS0 = s0, S0
+    #ins0, inS0 = init_vars(objects)
+    #print("Hand made cost: ", L(hmS0, hms0, objects, goal))
+    #print("Init cost: ", L(inS0, ins0, objects, goal))
+
+    # output result
+    # pose trajectory
+    print("pose trajectory:")
+    for t in range(1,T_final):
+        s_t = get_s_t(x, t)
+        box_pose = get_object_pos(s_t)
+        print(box_pose, t)
+
+    # contact forces
+    #print("forces:")
+    for t in range(1,T_final):
+        s_t = get_s_t(x, t)
+        contact_info = get_contact_info(s_t)
+        force = contact_info[0]
+        #print(force, t)
+
+    return x,f,d
