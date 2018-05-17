@@ -11,11 +11,12 @@ len_s = 24
 len_s_aug = 24 + 18 # includes vels and accels
 len_S = len_s*(T_final-1)
 len_S_aug = len_s_aug*(T_final-1) # will be more when interpolate between s values
-task_lamb = .1 # L_task parameter (weigh accelerations)
-col_lamb = .1 # L_kinematics parameter (weight object collisisions)
-phys_lamb = 1.0 # L_physics parameter (weigh contact forces)
 small_ang = .25
 hw, hh = 5.0, 5.0 # half-width, half-height
+
+task_lamb = .1 # L_task parameter (weigh accelerations)
+col_lamb = .1 # L_kinematics parameter (weight object collisisions)
+phys_lamb = .001 # L_physics parameter (weigh contact forces)
 
 #### GET FUNCTIONS ####
 def get_gripper1_pos(s):

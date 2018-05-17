@@ -3,7 +3,41 @@ import pdb
 from world import Line, Rectangle
 from CIO import CIO
 
-testing = False
+testing = True
+
+#### INITIALIZE DECISION VARIABLES ####
+def init_vars(objects):
+    _, box, _, _ = objects
+    # create the initial system state: s0
+    s0 = np.zeros(len_s)
+
+    # fill in object poses
+    for object in objects:
+        if object.pose_index != None:
+            s0[3*object.pose_index:3*object.pose_index+2] = object.pose
+            s0[3*object.pose_index+2] = object.angle
+
+    # initial contact information (just in contact with the ground):
+    # [fxj fyj rOxj rOyj cj for j in N_contacts]
+    # j = 0 gripper 1 contact
+    # j = 1 gripper 2 contact
+    # j = 2 ground contact
+    # rO is in object (box) frame
+    # ground contact force:
+    box_pose = box.pose
+    box_width = box.width
+    f2 = mass*gravity
+    con0 = [0.0, 0.0, 0.0, 0.0, 0.0] # gripper1
+    con1 = [0.0, 0.0, 0.0, 0.0, 0.0] # gripper2
+    con2 = [0.0, f2, box_width/2.0, 0.0, 1.0] # ground
+
+    s0[9:len_s] = (con0 + con1 + con2)
+
+    # initialize traj to all be the same as the starting state
+    S0 = np.zeros(len_S)
+    for t in range(T_final-1):
+        S0[t*len_s:t*len_s+len_s] = s0
+    return s0, S0
 
 #### PARAMETERS #### TODO move them here
 def init_objects():
@@ -14,11 +48,11 @@ def init_objects():
     box = Rectangle((5.0, 0.0), np.pi/2, 10.0, 10.0, pose_index = 2)
 
     # gripper1: origin is bottom of line
-    gripper1 = Line((5.0, 15.0), np.pi/2, 2.0, pose_index = 0, contact_index = 0,\
+    gripper1 = Line((7.0, 5.0), 3*np.pi/2, 2.0, pose_index = 0, contact_index = 0,\
                     actuated = True)
 
     # gripper2: origin is bottom of line
-    gripper2 = Line((15.0, 15.0), np.pi/2, 2.0, pose_index = 1, contact_index = 1,\
+    gripper2 = Line((10.0, 5.0), np.pi/2, 2.0, pose_index = 1, contact_index = 1,\
                     actuated = True)
 
     objects = [ground, box, gripper1, gripper2]
@@ -26,7 +60,6 @@ def init_objects():
     return goal, objects
 
 #### test trajectories ####
-from CIO import init_vars
 from util import *
 
 def make_test_traj(goal, objects):
@@ -46,9 +79,10 @@ def make_test_traj(goal, objects):
 def main():
     goal, objects = init_objects()
     if testing:
-        s0, S0 = make_test_traj(objects)
-        x,f,d = CIO(goal, objects, s0, S0)
+        s0, S0 = make_test_traj(goal, objects)
     else:
-        x,f,d = CIO(goal, objects)
+        s0, S0 = init_vars(objects)
+    x,f,d = CIO(goal, objects, s0, S0)
+
 if __name__ == '__main__':
     main()
