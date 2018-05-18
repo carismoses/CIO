@@ -21,10 +21,11 @@ class WorldTraj(object):
 
 # world origin is left bottom with 0 deg being along the x-axis (+ going ccw), all poses are in world frame
 class Object(object):
-    def __init__(self, pose = (0.0,0.0), angle = 0.0, actuated = False, \
+    def __init__(self, pose = (0.0,0.0), angle = 0.0, vel = (0.0, 0.0, 0.0), actuated = False, \
                 pose_index = None, contact_index = None, step_size = 0.5):
         self.pose = np.array(pose)
         self.angle = np.array(angle)
+        self.vel = np.array(vel)
         self.actuated = actuated
         self.pose_index = pose_index
         self.contact_index = contact_index
@@ -34,11 +35,13 @@ class Object(object):
     def step(self, S, t):
         if self.pose_index != None:
             if t == 0:
-                self.pose = S[3*self.pose_index:3*self.pose_index+2]
-                self.angle = S[3*self.pose_index+2]
+                self.pose = S[6*self.pose_index:6*self.pose_index+2]
+                self.angle = S[6*self.pose_index+2]
+                self.vel = S[6*self.pose_index+3:6*self.pose_index+7]
             else:
-                self.pose = S[3*self.pose_index+(t-1)*len_s:3*self.pose_index+(t-1)*len_s+2]
-                self.angle = S[3*self.pose_index+(t-1)*len_s+2]
+                self.pose = S[6*self.pose_index+(t-1)*len_s:6*self.pose_index+(t-1)*len_s+2]
+                self.angle = S[6*self.pose_index+(t-1)*len_s+2]
+                self.vel = S[6*self.pose_index+(t-1)*len_s+3:6*self.pose_index+(t-1)*len_s+7]
 
     def check_collisions(self, col_object):
         pts = self.discretize()
@@ -50,10 +53,10 @@ class Object(object):
         return max_col_dist
 
 class Line(Object):
-    def __init__(self, pose = (0.0,0.0), angle = 0.0, length = 10.0,\
+    def __init__(self, pose = (0.0,0.0), angle = 0.0, vel = (0.0, 0.0, 0.0), length = 10.0,\
                 actuated = False, pose_index = None, contact_index = None, step_size = 0.5):
         self.length = length
-        super(Line,self).__init__(pose, angle, actuated, pose_index, contact_index,\
+        super(Line,self).__init__(pose, angle, vel, actuated, pose_index, contact_index,\
                                     step_size)
 
     def discretize(self):
@@ -115,11 +118,11 @@ class Line(Object):
         return proj_point
 
 class Rectangle(Object):
-    def __init__(self, pose = (0.0,0.0), angle = 0.0, width = 10.0, height = 10.0, \
+    def __init__(self, pose = (0.0,0.0), angle = 0.0, vel = (0.0, 0.0, 0.0), width = 10.0, height = 10.0, \
                 actuated = False, pose_index = None, contact_index = None, step_size = 0.5):
         self.width = width
         self.height = height
-        super(Rectangle,self).__init__(pose, angle, actuated, pose_index, contact_index,\
+        super(Rectangle,self).__init__(pose, angle, vel, actuated, pose_index, contact_index,\
                                         step_size)
         self.lines = self.make_lines() # rectangles are made up of 4 line objects
 

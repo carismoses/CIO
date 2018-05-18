@@ -11,11 +11,12 @@ def init_vars(objects):
     # create the initial system state: s0
     s0 = np.zeros(len_s)
 
-    # fill in object poses
+    # fill in object poses and velocities
     for object in objects:
         if object.pose_index != None:
-            s0[3*object.pose_index:3*object.pose_index+2] = object.pose
-            s0[3*object.pose_index+2] = object.angle
+            s0[6*object.pose_index:6*object.pose_index+2] = object.pose
+            s0[6*object.pose_index+2] = object.angle
+            s0[6*object.pose_index+3:6*object.pose_index+7] = object.vel
 
     # initial contact information (just in contact with the ground):
     # [fxj fyj rOxj rOyj cj for j in N_contacts]
@@ -31,7 +32,7 @@ def init_vars(objects):
     con1 = [0.0, 0.0, 10.0, 5.0, 0.0] # gripper2
     con2 = [0.0, 0.0,  5.0, 0.0, 1.0] # ground
 
-    s0[9:len_s] = (con0 + con1 + con2)
+    s0[18:len_s] = (con0 + con1 + con2)
 
     # initialize traj to all be the same as the starting state
     S0 = np.zeros(len_S)
