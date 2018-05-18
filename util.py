@@ -72,11 +72,14 @@ def get_object_pos_ind():
 def get_contact_info_ind():
     return 9,24
 
-def get_contact_ind():
-    return 13, 18, 23
+def get_fj_ind():
+    return (9,11), (14,16), (19,21)
 
 def get_roj_ind():
     return (11,13), (16,18), (21,23)
+
+def get_contact_ind():
+    return 13, 18, 23
 
 def get_gripper1_vel_ind():
     return 24,27
@@ -137,12 +140,15 @@ def get_s_t(S, t):
 
 #### HELPER FUNCTIONS ####
 def get_bounds():
-    ind = get_contact_ind()
+    contact_ind = get_contact_ind()
+    ground_ind = get_fj_ind()[2][0] # no x direction forces from the ground allowed
     bounds = []
     for t in range(1,T_final):
         for v in range(len_s):
-            if v in ind:
+            if v in contact_ind:
                 bounds.append((0.,1.))
+            elif v == ground_ind:
+                bounds.append((0.,0.))
             else:
                 bounds.append((None,None))
     return bounds

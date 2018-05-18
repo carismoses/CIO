@@ -3,7 +3,7 @@ import pdb
 from world import Line, Rectangle
 from CIO import CIO
 
-testing = True
+testing = False
 
 #### INITIALIZE DECISION VARIABLES ####
 def init_vars(objects):
@@ -27,9 +27,9 @@ def init_vars(objects):
     box_pose = box.pose
     box_width = box.width
     f2 = mass*gravity
-    con0 = [4.0, 0.0, 10.0, 5.0, 0.01] # gripper1
-    con1 = [0.0, 0.0, 0.0, 5.0, 0.01] # gripper2
-    con2 = [0.0, f2, box_width/2.0, 0.0, 1.0] # ground
+    con0 = [0.0, 0.0,  0.0, 5.0, 0.0] # gripper1
+    con1 = [0.0, 0.0, 10.0, 5.0, 0.0] # gripper2
+    con2 = [0.0, 0.0,  5.0, 0.0, 1.0] # ground
 
     s0[9:len_s] = (con0 + con1 + con2)
 

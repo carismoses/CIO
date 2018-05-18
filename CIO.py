@@ -79,23 +79,16 @@ def L_physics(s, objects):
     contact_objects = [gripper1, gripper2, ground]
 
     # calculate sum of forces on object
-    # x-direction
-    f_x_tot = 0.0
     # calc frictional force only if object is moving in x direction
-    if ov[0] > 0.0:
-        normal_force = 0
-        for j in range(N_contacts):
-            normal_force += cj[j]*fj[j][1]
-        fric = -mu*normal_force
-        f_x_tot += fric
-    for j in range(N_contacts):
-        f_x_tot += cj[j]*fj[j][0]
+    # TODO: IGNORING FRICTION FOR NOW
 
-    # y-direction
-    f_y_tot = -mass*gravity
+    f_tot = np.array([0.0, 0.0])
     for j in range(N_contacts):
-        f_y_tot += cj[j]*fj[j][1]
-    f_tot = np.array([f_x_tot, f_y_tot])
+        f_tot += cj[j]*fj[j]
+    f_tot[1] += -mass*gravity
+
+    fric = (-1*np.sign(ov[0]))*mu*cj[2]*fj[2][1]
+    f_tot[0] += fric
 
     # calc change in linear momentum
     p_dot = mass*oa[0:2]
@@ -110,6 +103,7 @@ def L_physics(s, objects):
 
     # calc change in angular momentum
     l_dot = I*oa[2]
+
     # discourage large contact forces
     term = 0.
     for j in range(N_contacts):
@@ -224,9 +218,23 @@ def CIO(goal, objects, s0, S0):
         s_t = get_s_t(x, t)
         contact_info = get_contact_info(s_t)
         force = contact_info[0]
-        pos = contact_info[1]
-        contact = contact_info[2]
         print(t, ":\n", force)
+
+    # contact poses
+    print("contact poses:")
+    for t in range(1,T_final):
+        s_t = get_s_t(x, t)
+        contact_info = get_contact_info(s_t)
+        pos = contact_info[1]
+        print(t, ":\n", pos)
+
+    # contact coefficients
+    print("coefficients:")
+    for t in range(1,T_final):
+        s_t = get_s_t(x, t)
+        contact_info = get_contact_info(s_t)
+        contact = contact_info[2]
+        print(t, ":\n", contact)
 
     pdb.set_trace()
 
