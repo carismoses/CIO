@@ -27,8 +27,8 @@ def init_vars(objects):
     box_pose = box.pose
     box_width = box.width
     f2 = mass*gravity
-    con0 = [0.0, 0.0, 0.0, 0.0, 0.0] # gripper1
-    con1 = [0.0, 0.0, 0.0, 0.0, 0.0] # gripper2
+    con0 = [4.0, 0.0, 10.0, 5.0, 0.01] # gripper1
+    con1 = [0.0, 0.0, 0.0, 5.0, 0.01] # gripper2
     con2 = [0.0, f2, box_width/2.0, 0.0, 1.0] # ground
 
     s0[9:len_s] = (con0 + con1 + con2)
@@ -48,11 +48,11 @@ def init_objects():
     box = Rectangle((5.0, 0.0), np.pi/2, 10.0, 10.0, pose_index = 2)
 
     # gripper1: origin is bottom of line
-    gripper1 = Line((7.0, 5.0), 3*np.pi/2, 2.0, pose_index = 0, contact_index = 0,\
+    gripper1 = Line((5.0, 15.0), 3*np.pi/2, 2.0, pose_index = 0, contact_index = 0,\
                     actuated = True)
 
     # gripper2: origin is bottom of line
-    gripper2 = Line((10.0, 5.0), np.pi/2, 2.0, pose_index = 1, contact_index = 1,\
+    gripper2 = Line((15.0, 15.0), np.pi/2, 2.0, pose_index = 1, contact_index = 1,\
                     actuated = True)
 
     objects = [ground, box, gripper1, gripper2]

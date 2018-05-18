@@ -126,7 +126,7 @@ def L_physics(s, objects):
         angles[j] = contact_objects[j].angle
     nj = get_normals(angles)
     for j in range(N_contacts):
-        if cj[j] > 0.0: # TODO: fix.. don't think it's working.. 
+        if cj[j] > 0.0: # TODO: fix.. don't think it's working..
             cosangle_num = np.dot(fj[j], nj[j,:])
             cosangle_den = np.dot(np.linalg.norm(fj[j]), np.linalg.norm(nj[j,:]))
             if cosangle_den == 0.0: # TODO: is this correct?
@@ -198,8 +198,11 @@ def CIO(goal, objects, s0, S0):
     pdb.set_trace()
     bounds = get_bounds()
     x, f, d = fmin_l_bfgs_b(func=L, x0=S0, args=(s0, objects, goal), approx_grad=True, bounds=bounds)
-    #c = L(S0, s0, objects, goal)
-    #print(c)
+    """
+    c = L(S0, s0, objects, goal)
+    print(c)
+    return None, None, None
+    """
     # for comparing hand made traj and init traj
     #hms0, hmS0 = s0, S0
     #ins0, inS0 = init_vars(objects)
