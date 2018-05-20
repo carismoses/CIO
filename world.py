@@ -53,7 +53,7 @@ class Object(object):
         return max_col_dist
 
 class Line(Object):
-    def __init__(self, pose = (0.0,0.0), angle = 0.0, vel = (0.0, 0.0, 0.0), length = 10.0,\
+    def __init__(self, pose = (0.0,0.0), angle = 0.0, length = 10.0, vel = (0.0, 0.0, 0.0), \
                 actuated = False, pose_index = None, contact_index = None, step_size = 0.5):
         self.length = length
         super(Line,self).__init__(pose, angle, vel, actuated, pose_index, contact_index,\
@@ -118,7 +118,7 @@ class Line(Object):
         return proj_point
 
 class Rectangle(Object):
-    def __init__(self, pose = (0.0,0.0), angle = 0.0, vel = (0.0, 0.0, 0.0), width = 10.0, height = 10.0, \
+    def __init__(self, pose = (0.0,0.0), angle = 0.0, width = 10.0, height = 10.0, vel = (0.0, 0.0, 0.0), \
                 actuated = False, pose_index = None, contact_index = None, step_size = 0.5):
         self.width = width
         self.height = height
