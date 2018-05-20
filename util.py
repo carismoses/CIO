@@ -1,9 +1,10 @@
 import numpy as np
+import pdb
 
 #### PARAMETERS ####
 N_contacts = 3 # 2 grippers and 1 ground contact
 T_final = 10 # time steps to optimize over
-delT = 1
+delT = 1.0
 mass = 1.0 # mass
 gravity = 10.0 # gravity
 mu = 0.1 # friction coefficient
@@ -17,48 +18,60 @@ hw, hh = 5.0, 5.0 # half-width, half-height
 task_lamb = .1 # L_task parameter (weigh accelerations)
 col_lamb = .1 # L_kinematics parameter (weight object collisisions)
 phys_lamb = .001 # L_physics parameter (weigh contact forces)
+phys_lamb_2 = 10.0
 
 #### GET FUNCTIONS ####
 # TODO: call indice functions in here so don't have to change in 2 places...
 def get_gripper1_pos(s):
-    return s[0:3]
+    i,j = get_gripper1_pos_ind()
+    return s[i:j]
 
 def get_gripper1_vel(s):
-    return s[3:6]
+    i,j = get_gripper1_vel_ind()
+    return s[i:j]
 
 def get_gripper2_pos(s):
-    return s[6:9]
+    i,j = get_gripper2_pos_ind()
+    return s[i:j]
 
 def get_gripper2_vel(s):
-    return s[9:12]
+    i,j = get_gripper2_vel_ind()
+    return s[i:j]
 
 def get_object_pos(s):
-    return s[12:15]
+    i,j = get_object_pos_ind()
+    return s[i:j]
 
 def get_object_vel(s):
-    return s[15:18]
+    i,j = get_object_vel_ind()
+    return s[i:j]
 
 def get_contact_info(s):
     fj = np.zeros((N_contacts,2))
     roj = np.zeros((N_contacts,2))
     cj = np.zeros(N_contacts)
 
+    i = get_fj_ind()
+    k = get_roj_ind()
+    l = get_contact_ind()
+
     for j in range(N_contacts):
-        fj[j,:] = [s[18 + j*5], s[19 + j*5]]
-    for j in range(N_contacts):
-        roj[j,:] = [s[20 + j*5], s[21 + j*5]]
-    for j in range(N_contacts):
-        cj[j] = s[22 + j*5]
+        fj[j,:] = s[i[j][0]:i[j][1]]
+        roj[j,:] = s[k[j][0]:k[j][1]]
+        cj[j] = s[l[j]]
     return fj, roj, cj
 
 def get_gripper1_accel(s):
-    return s[33:36]
+    i,j = get_gripper1_accel_ind()
+    return s[i:j]
 
 def get_gripper2_accel(s):
-    return s[36:39]
+    i,j = get_gripper2_accel_ind()
+    return s[i:j]
 
 def get_object_accel(s):
-    return s[39:42]
+    i,j = get_object_accel_ind()
+    return s[i:j]
 
 #### GET INDICE FUNCTIONS ####
 def get_gripper1_pos_ind():
@@ -134,14 +147,14 @@ def get_s_t(S, t):
 #### HELPER FUNCTIONS ####
 def get_bounds():
     contact_ind = get_contact_ind()
-    ground_ind = get_fj_ind()[2][0] # no x direction forces from the ground allowed
+    ground_ind = get_fj_ind()[2][0]
     bounds = []
     for t in range(1,T_final):
         for v in range(len_s):
             if v in contact_ind:
-                bounds.append((0.,1.))
+                bounds.append((0.,1.)) # c's are between 0 and 1
             elif v == ground_ind:
-                bounds.append((0.,0.))
+                bounds.append((0.,0.)) # no x direction forces from the ground allowed
             else:
                 bounds.append((None,None))
     return bounds
