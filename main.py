@@ -3,7 +3,7 @@ import pdb
 from world import Line, Rectangle
 from CIO import CIO
 
-testing = False
+testing = True
 
 #### INITIALIZE DECISION VARIABLES ####
 def init_vars(objects):
@@ -16,7 +16,7 @@ def init_vars(objects):
         if object.pose_index != None:
             s0[6*object.pose_index:6*object.pose_index+2] = object.pose
             s0[6*object.pose_index+2] = object.angle
-            s0[6*object.pose_index+3:6*object.pose_index+7] = object.vel
+            s0[6*object.pose_index+3:6*object.pose_index+6] = object.vel
 
     # initial contact information (just in contact with the ground):
     # [fxj fyj rOxj rOyj cj for j in N_contacts]
@@ -28,9 +28,9 @@ def init_vars(objects):
     box_pose = box.pose
     box_width = box.width
     f2 = mass*gravity
-    con0 = [0.0, 0.0,  0.0, 5.0, 0.0] # gripper1
+    con0 = [0.0, 0.0,  0.0, 5.0, 1.0] # gripper1
     con1 = [0.0, 0.0, 10.0, 5.0, 0.0] # gripper2
-    con2 = [0.0, 0.0,  5.0, 0.0, 1.0] # ground
+    con2 = [0.0, f2,  5.0, 0.0, 1.0] # ground
 
     s0[18:len_s] = (con0 + con1 + con2)
 
@@ -46,7 +46,7 @@ def init_objects():
     ground = Line((0.0, 0.0), 0.0, 30.0, contact_index = 2)
 
     # box: origin is left bottom of box
-    box = Rectangle((5.0, 0.0), np.pi/2, 10.0, 10.0, pose_index = 2)
+    box = Rectangle((5.0, 0.0), np.pi/2, 10.0, 10.0, vel = (1.0, 0.0, 0.0), pose_index = 2)
 
     # gripper1: origin is bottom of line
     gripper1 = Line((5.0, 15.0), 3*np.pi/2, 2.0, pose_index = 0, contact_index = 0,\
@@ -83,7 +83,7 @@ def main():
         s0, S0 = make_test_traj(goal, objects)
     else:
         s0, S0 = init_vars(objects)
-    x,f,d = CIO(goal, objects, s0, S0)
+    x = CIO(goal, objects, s0, S0)
 
 if __name__ == '__main__':
     main()
