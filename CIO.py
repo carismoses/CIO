@@ -127,7 +127,7 @@ def phys_helper(s, cost_fn=None, grad_fns=None):
 
 def cost_helper(vals, inds, cost_fn = None, grad_fns = None):
     if cost_fn != None:
-        return cost_fn(vals)
+        return cost_fn(vals[0], vals[1], vals[2], vals[3], vals[4]) #TODO: same as 4 lines down
     else:
         grad = np.zeros((len_s))
         for i in range(len(grad_fns)):
