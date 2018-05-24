@@ -78,7 +78,7 @@ def phys_fns():
     # calc change in angular momentum
     l_dot = I*oa[2]
 
-    cost_fn =  phys_lamb_2*(TNorm(f_tot - p_dot)**2 + TNorm(m_tot - l_dot)**2)
+    cost_fn =  phys_lamb*(TNorm(f_tot - p_dot)**2 + TNorm(m_tot - l_dot)**2)
     cost = theano.function([fj, roj, cj, ov, oa], cost_fn)
     gc_fj = T.grad(cost_fn, fj)
     gc_roj = T.grad(cost_fn, roj)
@@ -95,17 +95,17 @@ def L_task(s, goal, t):
     I = 1 if t == (T_final-1) else 0
     hb = get_object_pos(s)
     h_star = goal[1]
-    l = I*np.linalg.norm(hb - h_star)**2
-    #if t == (T_final-1):
-    #    print("this is l: ",l)
+    cost = task_lamb*I*np.linalg.norm(hb - h_star)**2
+    return cost
 
+def L_accel(s):
     # small acceleration constraint (supposed to keep hand accel small, but
     # don't have a central hand so use grippers individually)
     o_dotdot = get_object_accel(s)
     g1_dotdot = get_gripper1_accel(s)
     g2_dotdot = get_gripper2_accel(s)
 
-    cost = l + task_lamb*(np.linalg.norm(o_dotdot)**2 + np.linalg.norm(g1_dotdot)**2 \
+    cost = accel_lamb*(np.linalg.norm(o_dotdot)**2 + np.linalg.norm(g1_dotdot)**2 \
                 + np.linalg.norm(g2_dotdot)**2)
     return cost
 
@@ -151,8 +151,8 @@ def L(S, s0, objects, goal, fns):
     world_traj = WorldTraj(s0, S, objects, N_contacts, T_final)
     world_traj.e_Os[:,0,:], world_traj.e_Hs[:,0,:] = calc_e(s0, objects)
     tot_cost = 0.0
-    cis, kinems, physs, coness, conts, velss, tasks = \
-                            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+    cis, kinems, physs, coness, conts, velss, tasks, accels = \
+                            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
     phys_cost, phys_grad = fns
 
@@ -172,7 +172,8 @@ def L(S, s0, objects, goal, fns):
         #cont = L_contact(s_aug_t)
         #vels = L_vels(s_aug_t, s_tm1)
         #task = L_task(s_aug_t, goal, t)
-        cost = phys #+ task #ci + kinem + cones + cont + vels
+        #accel = L_accel(s_aug_t)
+        cost = phys #+ task + vels#ci + kinem + cones + cont + accels
 
         #cis += ci
         #kinems += kinem
@@ -180,30 +181,28 @@ def L(S, s0, objects, goal, fns):
         #coness += cones
         #conts += cont
         #velss += vels
-        #tasks += task #TODO ADD TSK COST BACK AFTER THEANIZE IT
+        #tasks += task
+        #accels += accel
         tot_cost += cost
 
-        #print("ci:             ", ci)
-        #print("kinematics:     ", kinem)
-        print("physics:        ", phys)
-        #print("cone:           ", cones)
-        #print("contact forces: ", cont)
-        #print("velocities:     ", vels)
-        #print("task:           ", task)
-        print("TOTAL: ", cost)
-    return cost
+    #print("cis:             ", cis)
+    #print("kinematics:     ", kinems)
+    print("physics:        ", physs)
+    #print("cone:           ", coness)
+    #print("contact forces: ", conts)
+    #print("velocities:     ", velss)
+    #print("task:           ", tasks)
+    #pring("accels:        ", accels)
+    print("TOTAL: ", tot_cost)
+    return tot_cost
 
 def L_grad(S, s0, objects, goal, fns):
     # calculate the interpolated values between the key frames (for now skip) -> longer S
     S_aug = interpolate_s(s0, S)
     world_traj = WorldTraj(s0, S, objects, N_contacts, T_final)
     world_traj.e_Os[:,0,:], world_traj.e_Hs[:,0,:] = calc_e(s0, objects)
-    tot_cost = 0.0
-    cis, kinems, physs, coness, conts, velss, tasks = \
-                            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-
-    phys_cost, phys_grad = fns
-    grad_tot = np.zeros(len_s)
+    phys_cost_fn, phys_grad_fn = fns
+    grad_S = []
 
     for t in range(1,T_final):
         if t == 1:
@@ -214,53 +213,30 @@ def L_grad(S, s0, objects, goal, fns):
         world_traj.step(t)
         s_aug_t = get_s_aug_t(S_aug,t)
 
-        grad = np.zeros(len_s)
+        # sum up total for this time step
+        phys_grad = phys_helper(s_aug_t, grad_fns=phys_grad_fn)
+        grad_s = phys_grad #+ task + vels +ci + kinem + cones + cont + accels
 
-        #ci = L_CI(s_aug_t, t, objects, world_traj)
-        #kinem = L_kinematics(s_aug_t, objects)
-        phys = phys_helper(s_aug_t, grad_fns=phys_grad)
-        #cones = L_cone(s_aug_t)
-        #cont = L_contact(s_aug_t)
-        #vels = L_vels(s_aug_t, s_tm1)
-        #task = L_task(s_aug_t, goal, t)
-        cost = phys #+ task #ci + kinem + cones + cont + vels
-
-        #cis += ci
-        #kinems += kinem
-        physs += phys
-        #coness += cones
-        #conts += cont
-        #velss += vels
-        #tasks += task
-        tot_cost += cost
-
-        #print("ci:             ", ci)
-        #print("kinematics:     ", kinem)
-        print("physics:        ", phys)
-        #print("cone:           ", cones)
-        #print("contact forces: ", cont)
-        #print("velocities:     ", vels)
-        #print("task:           ", task)
-        print("TOTAL: ", cost)
-    return cost
+        # append to overall gradient
+        grad_S = np.concatenate([grad_S, grad_s])
+    return grad_S
 
 #### MAIN FUNCTION ####
 def CIO(goal, objects, s0, S0):
-    pdb.set_trace()
+    #pdb.set_trace()
     bounds = get_bounds()
 
     # get cost functions and their derivatives
     phys_cost, phys_grad = phys_fns()
     #task_cost, task_grad = task_fns()
     fns = [phys_cost, phys_grad]
-    """
-    c = L(S0, s0, objects, goal)
-    print(c)
-    return None, None, None
+
+    x = L(S0, s0, objects, goal, fns)
+    print(x)
     """
 
     #x, f, d = fmin_l_bfgs_b(func=L, x0=S0, args=(s0, objects, goal), approx_grad=True, bounds=bounds)
-    res = minimize(fun=L, x0=S0, args=(s0, objects, goal, fns), method='L-BFGS-B', jac=L_grad, bounds=bounds)
+    res = minimize(fun=L, x0=S0, args=(s0, objects, goal, fns), method='L-BFGS-B', bounds = bounds) #jac=L_grad
     x = res['x']
 
     # output result
@@ -313,7 +289,8 @@ def CIO(goal, objects, s0, S0):
         contact = contact_info[2]
         print(t, ":\n", contact)
 
-    print("Final cost: ", L(x, s0, objects, goal))
+    print("Final cost: ", L(x, s0, objects, goal, fns))
     pdb.set_trace()
 
     return x
+    """
