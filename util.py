@@ -15,10 +15,14 @@ len_S_aug = len_s_aug*(T_final-1) # will be more when interpolate between s valu
 small_ang = .25
 hw, hh = 5.0, 5.0 # half-width, half-height
 
-task_lamb = .1 # L_task parameter (weigh accelerations)
-col_lamb = .1 # L_kinematics parameter (weight object collisisions)
-phys_lamb = .001 # L_physics parameter (weigh contact forces)
-phys_lamb_2 = 10.0
+ci_lamb = 1.0       # contact invariance (have to be touching object to activate contact force)
+kin_lamb = .1       # object collisisions
+phys_lamb = 10.0    # physics have to make sense
+cone_lamb = 1.0     # contact force in friction cone
+cont_lamb = 1.0     # discourage large contact forces
+vel_lamb = 1.0      # velocities have to match change in poses
+task_lamb = 100.    # task (final position)
+accel_lamb = .001   # small accelerations
 
 #### GET FUNCTIONS ####
 # TODO: call indice functions in here so don't have to change in 2 places...
