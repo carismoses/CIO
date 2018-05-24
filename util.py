@@ -3,7 +3,7 @@ import pdb
 
 #### PARAMETERS ####
 N_contacts = 3 # 2 grippers and 1 ground contact
-T_final = 10 # time steps to optimize over
+T_final = 5 # time steps to optimize over
 delT = 1.0
 mass = 1.0 # mass
 gravity = 10.0 # gravity
