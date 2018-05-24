@@ -36,9 +36,16 @@ def get_fns():
 
     cost_fn =  phys_lamb_2*(TNorm(f_tot - p_dot)**2 + TNorm(m_tot - l_dot)**2)
     cost = theano.function([fj, roj, cj, ov, oa], cost_fn)
-    gc = T.grad(cost_fn, fj)
-    grad_fn = theano.function([fj, roj, cj, ov, oa], gc)
-    return cost, grad_fn
+    gc_fj = T.grad(cost_fn, fj)
+    gc_roj = T.grad(cost_fn, roj)
+    gc_cj = T.grad(cost_fn, cj)
+    gc_ov = T.grad(cost_fn, ov)
+    #grad_fn = theano.function([fj, roj, cj, ov, oa], gc)
+    grad_fns = [theano.function([fj, roj, cj, ov, oa], gc_fj),
+                theano.function([fj, roj, cj, ov, oa], gc_roj),
+                theano.function([fj, roj, cj, ov, oa], gc_cj),
+                theano.function([fj, roj, cj, ov, oa], gc_ov, on_unused_input='ignore')]
+    return cost, grad_fns
 
 def TNorm(x):
     return T.sum(T.sqr(x))
@@ -47,13 +54,14 @@ def TNorm(x):
 def TCross(a, b):
     return T.as_tensor([a[0]*b[1] - a[1]*b[0]])
 
-def L_physics(s, cost_fn, grad_fn):
+def L_physics(s, cost_fn, grad_fns):
     fj_val, roj_val, cj_val = get_contact_info(s)
     ov_val = get_object_vel(s)
     oa_val = get_object_accel(s)
-
+    pdb.set_trace()
     print(cost_fn(fj_val, roj_val, cj_val, ov_val, oa_val))
-    print(grad_fn(fj_val, roj_val, cj_val, ov_val, oa_val))
+    for grad_fn in grad_fns:
+        print(grad_fn(fj_val, roj_val, cj_val, ov_val, oa_val))
 
 if __name__ == '__main__':
     goal, objects = init_objects()

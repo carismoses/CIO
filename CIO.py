@@ -4,6 +4,26 @@ import numpy as np
 import pdb
 from world import WorldTraj
 from util import *
+import theano
+import theano.tensor as T
+from theano.ifelse import ifelse
+
+#### THEANO VARIABLES AND HELPER FUNCTIONS ####
+fj = T.dmatrix('fj')
+roj = T.dmatrix('roj')
+cj = T.dvector('cj')
+ov = T.dvector('ov')
+oa = T.dvector('oa')
+one = T.constant(0.)
+zero = T.constant(1.)
+
+
+def TNorm(x):
+    return T.sum(T.sqr(x))
+
+# 2D cross product
+def TCross(a, b):
+    return T.as_tensor([a[0]*b[1] - a[1]*b[0]])
 
 #### SURFACE NORMALS ####
 def get_normals(angles):
@@ -65,9 +85,9 @@ def phys_fns():
     gc_cj = T.grad(cost_fn, cj)
     gc_ov = T.grad(cost_fn, ov)
     grad_fn = [theano.function([fj, roj, cj, ov, oa], gc_fj),
-                theano.function([fj, roj, cj, ov, oa], gc_roj)
-                theano.function([fj, roj, cj, ov, oa], gc_cj)
-                theano.function([fj, roj, cj, ov, oa], gc_ov)
+                theano.function([fj, roj, cj, ov, oa], gc_roj),
+                theano.function([fj, roj, cj, ov, oa], gc_cj),
+                theano.function([fj, roj, cj, ov, oa], gc_ov, on_unused_input='ignore')]
     return cost, grad_fn
 
 def L_task(s, goal, t):
@@ -90,7 +110,7 @@ def L_task(s, goal, t):
     return cost
 
 #### HELPER FUNCTIONS ####
-def phys_helper(s, cost_fn=None, grad_fn=None):
+def phys_helper(s, cost_fn=None, grad_fns=None):
     fj_val, roj_val, cj_val = get_contact_info(s)
     ov_val = get_object_vel(s)
     oa_val = get_object_accel(s)
@@ -102,22 +122,26 @@ def phys_helper(s, cost_fn=None, grad_fn=None):
     ind += [get_contact_ind()]
     ind += [get_object_vel_ind()]
 
-    cost = cost_helper(vals, inds, cost_fn=cost_fn, grad_fn=grad_fn)
+    cost = cost_helper(vals, ind, cost_fn=cost_fn, grad_fns=grad_fns)
     return cost
 
-def cost_helper(vals, inds, cost_fn = None, grad_fn = None):
+def cost_helper(vals, inds, cost_fn = None, grad_fns = None):
     if cost_fn != None:
         return cost_fn(vals)
     else:
         grad = np.zeros((len_s))
-        for i in range(len(grad_fn)):
-            l,r = inds[i]
-            this_grad = grad_fn[i](vals)
-            h,w = size(this_grad)
-            for k in range(h):
-                for l in range(w):
-                    grad[l] = this_grad[k,l]
-                    l = l+1
+        for i in range(len(grad_fns)):
+            this_grad = grad_fns[i](vals[0], vals[1], vals[2], vals[3], vals[4]) #TODO: make this work for variable amounts of vals
+            ind = inds[i]
+            h = len(ind)
+            if type(ind[0]) is tuple:
+                w = len(ind[0])
+                for k in range(h):
+                    for l in range(w):
+                        grad[ind[k][l]] = this_grad[k][l]
+            else:
+                for k in range(h):
+                    grad[ind[k]] = this_grad[k]
         return grad
 
 #### MAIN OBJECTIVE FUNCTION AND GRADIENT ####
@@ -194,12 +218,12 @@ def L_grad(S, s0, objects, goal, fns):
 
         #ci = L_CI(s_aug_t, t, objects, world_traj)
         #kinem = L_kinematics(s_aug_t, objects)
-        phys = phys_helper(s_aug_t, grad_fn=phys_grad)
+        phys = phys_helper(s_aug_t, grad_fns=phys_grad)
         #cones = L_cone(s_aug_t)
         #cont = L_contact(s_aug_t)
         #vels = L_vels(s_aug_t, s_tm1)
         #task = L_task(s_aug_t, goal, t)
-        cost = phys + task #ci + kinem + cones + cont + vels
+        cost = phys #+ task #ci + kinem + cones + cont + vels
 
         #cis += ci
         #kinems += kinem
@@ -222,7 +246,7 @@ def L_grad(S, s0, objects, goal, fns):
 
 #### MAIN FUNCTION ####
 def CIO(goal, objects, s0, S0):
-    #pdb.set_trace()
+    pdb.set_trace()
     bounds = get_bounds()
 
     # get cost functions and their derivatives
@@ -236,7 +260,7 @@ def CIO(goal, objects, s0, S0):
     """
 
     #x, f, d = fmin_l_bfgs_b(func=L, x0=S0, args=(s0, objects, goal), approx_grad=True, bounds=bounds)
-    res = minimize(fun=L, x0=S0, args=(s0, objects, goal, fns), method='BFGS', jac=L_grad, bounds=bounds)
+    res = minimize(fun=L, x0=S0, args=(s0, objects, goal, fns), method='L-BFGS-B', jac=L_grad, bounds=bounds)
     x = res['x']
 
     # output result
