@@ -17,7 +17,6 @@ oa = T.dvector('oa')
 one = T.constant(0.)
 zero = T.constant(1.)
 
-
 def TNorm(x):
     return T.sum(T.sqr(x))
 
@@ -58,6 +57,7 @@ def calc_e(s, objects):
     return e_O, e_H
 
 #### OBJECTIVE FUNCTIONS ####
+"""
 def phys_fns():
     # calculate sum of forces on object
     # calc frictional force only if object is moving in x direction
@@ -89,6 +89,109 @@ def phys_fns():
                 theano.function([fj, roj, cj, ov, oa], gc_cj),
                 theano.function([fj, roj, cj, ov, oa], gc_ov, on_unused_input='ignore')]
     return cost, grad_fn
+"""
+
+#### OBJECTIVE FUNCTIONS ####
+def L_CI(s, t, objects, world_traj):
+    e_O, e_H = calc_e(s, objects)
+    world_traj.e_Os[:,t,:], world_traj.e_Hs[:,t,:] = e_O, e_H
+    _, _, cj = get_contact_info(s)
+    e_O_tm1, e_H_tm1 = world_traj.e_Os[:,t-1,:], world_traj.e_Hs[:,t-1,:]
+
+    # calculate the edots
+    e_O_dot = (e_O - e_O_tm1)/delT
+    e_H_dot = (e_H - e_H_tm1)/delT
+
+    # calculate the contact invariance cost
+    cost = 0
+    for j in range(N_contacts):
+        cost += cj[j]*(np.linalg.norm(e_O[j,:])**2 + np.linalg.norm(e_H[j,:])**2 \
+                + np.linalg.norm(e_O_dot[j,:])**2 + np.linalg.norm(e_H_dot)**2)
+    return ci_lamb*cost
+
+# includes 1) limits on finger and arm joint angles (doesn't apply)
+#          2) distance from fingertips to palms limit (doesn't apply)
+#          3) TODO: collisions between fingers
+def L_kinematics(s, objects):
+    cost = 0
+    # penalize collisions between all objects
+    obj_num = 0
+    while obj_num < len(objects):
+        for col_object in objects[obj_num+1:]:
+            col_dist = objects[obj_num].check_collisions(col_object)
+            cost += col_lamb*col_dist
+            obj_num += 1
+    return kin_lamb*cost
+
+def L_physics(s, objects):
+    # get relevant state info
+    fj, roj, cj = get_contact_info(s)
+    ov = get_object_vel(s)
+    oa = get_object_accel(s)
+    ground, _, gripper1, gripper2 = objects
+    contact_objects = [gripper1, gripper2, ground]
+
+    # calculate sum of forces on object
+    # calc frictional force only if object is moving in x direction
+    f_tot = np.array([0.0, 0.0])
+    for j in range(N_contacts):
+        f_tot += cj[j]*fj[j]
+    f_tot[1] += -mass*gravity
+
+    fric = (-1*np.sign(ov[0]))*mu*cj[2]*fj[2][1]
+    f_tot[0] += fric
+
+    # calc change in linear momentum
+    p_dot = mass*oa[0:2]
+
+    # calc sum of moments on object (friction acts on COM? gravity does)
+    # TODO: correct calc of I (moment of inertia)
+    I = mass
+    m_tot = np.array([0.0,0.0])
+    for j in range(N_contacts):
+        # transform to be relative to object COM not lower left corner
+        m_tot += np.cross(cj[j]*fj[j], roj[j] + np.array([-5, -5]))
+
+    # calc change in angular momentum
+    l_dot = I*oa[2]
+
+    cost =  phys_lamb*(np.linalg.norm(f_tot - p_dot)**2 + np.linalg.norm(m_tot - l_dot)**2)
+    return cost
+
+def L_cone(s):
+    # calc L_cone
+    fj, roj, cj = get_contact_info(s)
+    cost = 0.0
+    # get contact surface angles
+    angles = np.zeros((N_contacts))
+    for j in range(N_contacts):
+        angles[j] = contact_objects[j].angle
+    # get unit normal to contact surfaces at pi_j using surface line
+    nj = get_normals(angles)
+    for j in range(N_contacts):
+        if cj[j] > 0.0: # TODO: fix.. don't think it's working..
+            cosangle_num = np.dot(fj[j], nj[j,:])
+            cosangle_den = np.dot(np.linalg.norm(fj[j]), np.linalg.norm(nj[j,:]))
+            if cosangle_den == 0.0: # TODO: is this correct?
+                angle = 0.0
+            else:
+                angle = np.arccos(cosangle_num/cosangle_den)
+            cost += max(angle - np.arctan(mu), 0)**2
+    return cone_lamb*cost
+
+def L_contact(s):
+    # discourage large contact forces
+    fj, roj, cj = get_contact_info(s)
+    cost = 0.
+    for j in range(N_contacts):
+        cost += np.linalg.norm(fj[j])**2
+    cost = cont_lamb*term
+    return cost
+
+def L_vels(s, s_tm1):
+    # penalize differences between poses and velocities
+    cost = vel_lamb*sum((get_object_vel(s) - (get_object_pos(s) - get_object_pos(s_tm1))/delT)**2)
+    return cost
 
 def L_task(s, goal, t):
     # l constraint: get object to desired pos
@@ -110,6 +213,7 @@ def L_accel(s):
     return cost
 
 #### HELPER FUNCTIONS ####
+"""
 def phys_helper(s, cost_fn=None, grad_fns=None):
     fj_val, roj_val, cj_val = get_contact_info(s)
     ov_val = get_object_vel(s)
@@ -143,9 +247,13 @@ def cost_helper(vals, inds, cost_fn = None, grad_fns = None):
                 for k in range(h):
                     grad[ind[k]] = this_grad[k]
         return grad
+"""
 
 #### MAIN OBJECTIVE FUNCTION AND GRADIENT ####
+"""
 def L(S, s0, objects, goal, fns):
+"""
+def L(S, s0, objects, goal):
     # calculate the interpolated values between the key frames (for now skip) -> longer S
     S_aug = interpolate_s(s0, S)
     world_traj = WorldTraj(s0, S, objects, N_contacts, T_final)
@@ -154,7 +262,9 @@ def L(S, s0, objects, goal, fns):
     cis, kinems, physs, coness, conts, velss, tasks, accels = \
                             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
+    """
     phys_cost, phys_grad = fns
+    """
 
     for t in range(1,T_final):
         if t == 1:
@@ -165,23 +275,26 @@ def L(S, s0, objects, goal, fns):
         world_traj.step(t)
         s_aug_t = get_s_aug_t(S_aug,t)
 
+        """
+        phys = phys_helper(s_aug_t, cost_fn=phys_cost)
+        """
         #ci = L_CI(s_aug_t, t, objects, world_traj)
         #kinem = L_kinematics(s_aug_t, objects)
-        phys = phys_helper(s_aug_t, cost_fn=phys_cost)
+        phys = L_physics(s_aug_t, objects)
         #cones = L_cone(s_aug_t)
         #cont = L_contact(s_aug_t)
         #vels = L_vels(s_aug_t, s_tm1)
         #task = L_task(s_aug_t, goal, t)
         #accel = L_accel(s_aug_t)
-        cost = phys #+ task + vels#ci + kinem + cones + cont + accels
+        cost = phys + task + vels#ci + kinem + cones + cont + accels
 
         #cis += ci
         #kinems += kinem
         physs += phys
         #coness += cones
         #conts += cont
-        #velss += vels
-        #tasks += task
+        velss += vels
+        tasks += task
         #accels += accel
         tot_cost += cost
 
@@ -190,12 +303,13 @@ def L(S, s0, objects, goal, fns):
     print("physics:        ", physs)
     #print("cone:           ", coness)
     #print("contact forces: ", conts)
-    #print("velocities:     ", velss)
-    #print("task:           ", tasks)
+    print("velocities:     ", velss)
+    print("task:           ", tasks)
     #pring("accels:        ", accels)
     print("TOTAL: ", tot_cost)
     return tot_cost
 
+"""
 def L_grad(S, s0, objects, goal, fns):
     # calculate the interpolated values between the key frames (for now skip) -> longer S
     S_aug = interpolate_s(s0, S)
@@ -220,23 +334,33 @@ def L_grad(S, s0, objects, goal, fns):
         # append to overall gradient
         grad_S = np.concatenate([grad_S, grad_s])
     return grad_S
+"""
 
 #### MAIN FUNCTION ####
 def CIO(goal, objects, s0, S0):
     #pdb.set_trace()
     bounds = get_bounds()
 
+    """
     # get cost functions and their derivatives
     phys_cost, phys_grad = phys_fns()
     #task_cost, task_grad = task_fns()
     fns = [phys_cost, phys_grad]
-
+    """
+    """
     x = L(S0, s0, objects, goal, fns)
     print(x)
     """
 
-    #x, f, d = fmin_l_bfgs_b(func=L, x0=S0, args=(s0, objects, goal), approx_grad=True, bounds=bounds)
-    res = minimize(fun=L, x0=S0, args=(s0, objects, goal, fns), method='L-BFGS-B', bounds = bounds) #jac=L_grad
+    """
+    # FOR TESTING A SINGLE traj
+    x = L(S0, s0, objects, goal)
+    print(x)
+    """
+    res = minimize(fun=L, x0=S0, args=(s0, objects, goal), method='L-BFGS-B', bounds=bounds, approx_grad=True)
+    """
+    res = minimize(fun=L, x0=S0, args=(s0, objects, goal, fns), method='L-BFGS-B', bounds = bounds, jac=L_grad)
+    """
     x = res['x']
 
     # output result
@@ -289,8 +413,10 @@ def CIO(goal, objects, s0, S0):
         contact = contact_info[2]
         print(t, ":\n", contact)
 
+    """
     print("Final cost: ", L(x, s0, objects, goal, fns))
+    """
+    print("Final cost: ", L(x, s0, objects, goal))
     pdb.set_trace()
 
     return x
-    """
