@@ -283,8 +283,8 @@ def L(S, s0, objects, goal):
         phys = L_physics(s_aug_t, objects)
         #cones = L_cone(s_aug_t)
         #cont = L_contact(s_aug_t)
-        #vels = L_vels(s_aug_t, s_tm1)
-        #task = L_task(s_aug_t, goal, t)
+        vels = L_vels(s_aug_t, s_tm1)
+        task = L_task(s_aug_t, goal, t)
         #accel = L_accel(s_aug_t)
         cost = phys + task + vels#ci + kinem + cones + cont + accels
 
@@ -357,7 +357,7 @@ def CIO(goal, objects, s0, S0):
     x = L(S0, s0, objects, goal)
     print(x)
     """
-    res = minimize(fun=L, x0=S0, args=(s0, objects, goal), method='L-BFGS-B', bounds=bounds, approx_grad=True)
+    res = minimize(fun=L, x0=S0, args=(s0, objects, goal), method='L-BFGS-B', bounds=bounds)
     """
     res = minimize(fun=L, x0=S0, args=(s0, objects, goal, fns), method='L-BFGS-B', bounds = bounds, jac=L_grad)
     """
