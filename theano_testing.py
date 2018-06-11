@@ -11,8 +11,8 @@ roj = T.dmatrix('roj')
 cj = T.dvector('cj')
 ov = T.dvector('ov')
 oa = T.dvector('oa')
-one = T.constant(0.)
-zero = T.constant(1.)
+one = T.constant(1.)
+zero = T.constant(0.)
 
 def get_fns():
     # calculate sum of forces on object
