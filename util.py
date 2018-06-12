@@ -12,7 +12,6 @@ len_s = 33
 len_s_aug = len_s + 9 # accelerations
 len_S = len_s*(T_final-1)
 len_S_aug = len_s_aug*(T_final-1) # will be more when interpolate between s values
-small_ang = .25
 hw, hh = 5.0, 5.0 # half-width, half-height
 
 ci_lamb = 1.0       # contact invariance (have to be touching object to activate contact force)
