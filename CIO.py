@@ -38,7 +38,7 @@ def calc_e(s, objects):
     o = box.pose
 
     # get ro: roj in world frame
-    fj, roj, cj = get_contact_info(s)
+    fj, roj, _ = get_contact_info(s)
     rj = roj + np.tile(o, (3, 1))
 
     # get pi_j: project rj onto all contact surfaces
@@ -278,7 +278,7 @@ def L(S, s0, objects, goal):
         """
         phys = phys_helper(s_aug_t, cost_fn=phys_cost)
         """
-        #ci = L_CI(s_aug_t, t, objects, world_traj)
+        ci = L_CI(s_aug_t, t, objects, world_traj)
         #kinem = L_kinematics(s_aug_t, objects)
         phys = L_physics(s_aug_t, objects)
         #cones = L_cone(s_aug_t)
@@ -286,9 +286,9 @@ def L(S, s0, objects, goal):
         vels = L_vels(s_aug_t, s_tm1)
         task = L_task(s_aug_t, goal, t)
         #accel = L_accel(s_aug_t)
-        cost = phys + task + vels#ci + kinem + cones + cont + accels
+        cost = phys + task + ci #vels + ci #+ kinem + cones + cont + accels
 
-        #cis += ci
+        cis += ci
         #kinems += kinem
         physs += phys
         #coness += cones
@@ -298,7 +298,7 @@ def L(S, s0, objects, goal):
         #accels += accel
         tot_cost += cost
 
-    #print("cis:             ", cis)
+    print("cis:             ", cis)
     #print("kinematics:     ", kinems)
     print("physics:        ", physs)
     #print("cone:           ", coness)
@@ -354,9 +354,12 @@ def CIO(goal, objects, s0, S0):
 
     """
     # FOR TESTING A SINGLE traj
+    pdb.set_trace()
     x = L(S0, s0, objects, goal)
     print(x)
+    pdb.set_trace()
     """
+
     res = minimize(fun=L, x0=S0, args=(s0, objects, goal), method='L-BFGS-B', bounds=bounds)
     """
     res = minimize(fun=L, x0=S0, args=(s0, objects, goal, fns), method='L-BFGS-B', bounds = bounds, jac=L_grad)
@@ -417,6 +420,5 @@ def CIO(goal, objects, s0, S0):
     print("Final cost: ", L(x, s0, objects, goal, fns))
     """
     print("Final cost: ", L(x, s0, objects, goal))
-    pdb.set_trace()
 
     return x
