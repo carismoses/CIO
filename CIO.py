@@ -26,42 +26,18 @@ def TCross(a, b):
 
 #### SURFACE NORMALS ####
 def get_normals(angles):
-    nj = np.zeros((N_contacts, 2))
-    for j in range(N_contacts):
+    nj = np.zeros((N, 2))
+    for j in range(N):
         norm_angle = angles[j] + np.pi/2
         nj[j,:] = np.array([np.cos(norm_angle), np.sin(norm_angle)])
     return nj
-
-#### HELPER FUNCTIONS ####
-def calc_e(s, objects):
-    _, box, _, _ = objects
-    o = box.pose
-
-    # get ro: roj in world frame
-    fj, roj, _ = get_contact_info(s)
-    rj = roj + np.tile(o, (3, 1))
-
-    # get pi_j: project rj onto all contact surfaces
-    pi_j = np.zeros((N_contacts, 2))
-    for object in objects:
-        if object.contact_index != None:
-            pi_j[object.contact_index,:] = object.project_point(rj[object.contact_index,:])
-
-    # get pi_o: project rj onto object
-    pi_o = np.zeros((N_contacts,2))
-    for j in range(N_contacts):
-        pi_o[j,:] = box.project_point(rj[j,:])
-
-    e_O = pi_o - rj
-    e_H = pi_j - rj
-    return e_O, e_H
 
 #### OBJECTIVE FUNCTIONS ####
 """
 def phys_fns():
     # calculate sum of forces on object
     # calc frictional force only if object is moving in x direction
-    f_tot = sum([cj[j]*fj[j] for j in range(N_contacts)])
+    f_tot = sum([cj[j]*fj[j] for j in range(N)])
     f_tot = T.inc_subtensor(f_tot[1], -mass*gravity)
     coeff = ifelse(T.gt(ov[0], zero), one, ifelse(T.lt(ov[0], 0), -one, zero))
     fric = -1*coeff*mu*cj[2]*fj[2,1]
@@ -73,7 +49,7 @@ def phys_fns():
     # calc sum of moments on object (friction acts on COM? gravity does)
     # TODO: correct calc of I (moment of inertia)
     I = mass
-    m_tot = sum(TCross(cj[j]*fj[j,:], roj[j,:] + np.array([-5, -5])) for j in range(N_contacts))
+    m_tot = sum(TCross(cj[j]*fj[j,:], roj[j,:] + np.array([-5, -5])) for j in range(N))
 
     # calc change in angular momentum
     l_dot = I*oa[2]
@@ -93,18 +69,17 @@ def phys_fns():
 
 #### OBJECTIVE FUNCTIONS ####
 def L_CI(s, t, objects, world_traj):
-    e_O, e_H = calc_e(s, objects)
-    world_traj.e_Os[:,t,:], world_traj.e_Hs[:,t,:] = e_O, e_H
-    _, _, cj = get_contact_info(s)
+    e_O, e_H = world_traj.calc_e(s, t, objects)
     e_O_tm1, e_H_tm1 = world_traj.e_Os[:,t-1,:], world_traj.e_Hs[:,t-1,:]
+    _, _, cj = get_contact_info(s)
 
     # calculate the edots
-    e_O_dot = (e_O - e_O_tm1)/delT
-    e_H_dot = (e_H - e_H_tm1)/delT
+    e_O_dot = calc_deriv(e_O, e_O_tm1)
+    e_H_dot = calc_deriv(e_H, e_H_tm1)
 
     # calculate the contact invariance cost
     cost = 0
-    for j in range(N_contacts):
+    for j in range(N):
         cost += cj[j]*(np.linalg.norm(e_O[j,:])**2 + np.linalg.norm(e_H[j,:])**2 \
                 + np.linalg.norm(e_O_dot[j,:])**2 + np.linalg.norm(e_H_dot)**2)
     return ci_lamb*cost
@@ -134,7 +109,7 @@ def L_physics(s, objects):
     # calculate sum of forces on object
     # calc frictional force only if object is moving in x direction
     f_tot = np.array([0.0, 0.0])
-    for j in range(N_contacts):
+    for j in range(N):
         f_tot += cj[j]*fj[j]
     f_tot[1] += -mass*gravity
 
@@ -148,7 +123,7 @@ def L_physics(s, objects):
     # TODO: correct calc of I (moment of inertia)
     I = mass
     m_tot = np.array([0.0,0.0])
-    for j in range(N_contacts):
+    for j in range(N):
         # transform to be relative to object COM not lower left corner
         m_tot += np.cross(cj[j]*fj[j], roj[j] + np.array([-5, -5]))
 
@@ -163,12 +138,12 @@ def L_cone(s):
     fj, roj, cj = get_contact_info(s)
     cost = 0.0
     # get contact surface angles
-    angles = np.zeros((N_contacts))
-    for j in range(N_contacts):
+    angles = np.zeros((N))
+    for j in range(N):
         angles[j] = contact_objects[j].angle
     # get unit normal to contact surfaces at pi_j using surface line
     nj = get_normals(angles)
-    for j in range(N_contacts):
+    for j in range(N):
         if cj[j] > 0.0: # TODO: fix.. don't think it's working..
             cosangle_num = np.dot(fj[j], nj[j,:])
             cosangle_den = np.dot(np.linalg.norm(fj[j]), np.linalg.norm(nj[j,:]))
@@ -183,7 +158,7 @@ def L_contact(s):
     # discourage large contact forces
     fj, roj, cj = get_contact_info(s)
     cost = 0.
-    for j in range(N_contacts):
+    for j in range(N):
         cost += np.linalg.norm(fj[j])**2
     cost = cont_lamb*term
     return cost
@@ -195,7 +170,7 @@ def L_vels(s, s_tm1):
 
 def L_task(s, goal, t):
     # l constraint: get object to desired pos
-    I = 1 if t == (T_final-1) else 0
+    I = 1 if t == (T_steps-1) else 0
     hb = get_object_pos(s)
     h_star = goal[1]
     cost = task_lamb*I*np.linalg.norm(hb - h_star)**2
@@ -254,10 +229,11 @@ def cost_helper(vals, inds, cost_fn = None, grad_fns = None):
 def L(S, s0, objects, goal, fns):
 """
 def L(S, s0, objects, goal):
-    # calculate the interpolated values between the key frames (for now skip) -> longer S
-    S_aug = interpolate_s(s0, S)
-    world_traj = WorldTraj(s0, S, objects, N_contacts, T_final)
-    world_traj.e_Os[:,0,:], world_traj.e_Hs[:,0,:] = calc_e(s0, objects)
+    # augment by calculating the accelerations from the velocities
+    # interpolate all of the decision vars to get a finer trajcetory disretization
+    S_aug = augment_s(s0, S)
+
+    world_traj = WorldTraj(s0, S_aug, objects)
     tot_cost = 0.0
     cis, kinems, physs, coness, conts, velss, tasks, accels = \
                             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
@@ -266,14 +242,14 @@ def L(S, s0, objects, goal):
     phys_cost, phys_grad = fns
     """
 
-    for t in range(1,T_final):
+    for t in range(1,T_steps):
         if t == 1:
             s_tm1 = s0
         else:
-            s_tm1 = get_s_aug_t(S_aug, t-1)
+            s_tm1 = get_s(S_int, t-1)
 
         world_traj.step(t)
-        s_aug_t = get_s_aug_t(S_aug,t)
+        s_aug_t = get_s(S_int,t)
 
         """
         phys = phys_helper(s_aug_t, cost_fn=phys_cost)
@@ -312,13 +288,12 @@ def L(S, s0, objects, goal):
 """
 def L_grad(S, s0, objects, goal, fns):
     # calculate the interpolated values between the key frames (for now skip) -> longer S
-    S_aug = interpolate_s(s0, S)
-    world_traj = WorldTraj(s0, S, objects, N_contacts, T_final)
-    world_traj.e_Os[:,0,:], world_traj.e_Hs[:,0,:] = calc_e(s0, objects)
+    S_aug = augment_s(s0, S)
+    world_traj = WorldTraj(s0, S, objects)
     phys_cost_fn, phys_grad_fn = fns
     grad_S = []
 
-    for t in range(1,T_final):
+    for t in range(1,N):
         if t == 1:
             s_tm1 = s0
         else:
@@ -370,48 +345,48 @@ def CIO(goal, objects, s0, S0):
     print("differences in final state: \n", S0-x)
 
     # augement the output
-    x_aug = interpolate_s(s0,x)
+    x_aug = augment_s(s0,x)
     # pose trajectory
     print("pose trajectory:")
-    for t in range(1,T_final):
-        s_t = get_s_t(x, t)
+    for t in range(1,K+1):
+        s_t = get_s(x, t)
         box_pose = get_object_pos(s_t)
         print(box_pose, t)
 
     # velocity trajectory
     print("vel trajectory:")
-    for t in range(1,T_final):
-        s_t = get_s_t(x, t)
+    for t in range(1,K+1):
+        s_t = get_s(x, t)
         box_vel = get_object_vel(s_t)
         print(box_vel, t)
 
     # accel trajectory
     print("accel trajectory:")
-    for t in range(1,T_final):
-        s_t = get_s_aug_t(x_aug, t)
+    for t in range(1,K+1):
+        s_t = get_s(x_aug, t)
         box_accel = get_object_accel(s_t)
         print(box_accel, t)
 
     # contact forces
     print("contact forces:")
-    for t in range(1,T_final):
-        s_t = get_s_t(x, t)
+    for t in range(1,K+1):
+        s_t = get_s(x, t)
         contact_info = get_contact_info(s_t)
         force = contact_info[0]
         print(t, ":\n", force)
 
     # contact poses
     print("contact poses:")
-    for t in range(1,T_final):
-        s_t = get_s_t(x, t)
+    for t in range(1,K+1):
+        s_t = get_s(x, t)
         contact_info = get_contact_info(s_t)
         pos = contact_info[1]
         print(t, ":\n", pos)
 
     # contact coefficients
     print("coefficients:")
-    for t in range(1,T_final):
-        s_t = get_s_t(x, t)
+    for t in range(1,K+1):
+        s_t = get_s(x, t)
         contact_info = get_contact_info(s_t)
         contact = contact_info[2]
         print(t, ":\n", contact)

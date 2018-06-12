@@ -19,7 +19,7 @@ def init_vars(objects):
             s0[6*object.pose_index+3:6*object.pose_index+6] = object.vel
 
     # initial contact information (just in contact with the ground):
-    # [fxj fyj rOxj rOyj cj for j in N_contacts]
+    # [fxj fyj rOxj rOyj cj for j in N]
     # j = 0 gripper 1 contact
     # j = 1 gripper 2 contact
     # j = 2 ground contact
@@ -32,8 +32,8 @@ def init_vars(objects):
 
     # initialize traj to all be the same as the starting state
     S0 = np.zeros(len_S)
-    for t in range(T_final-1):
-        S0[t*len_s:t*len_s+len_s] = s0
+    for k in range(K):
+        S0[k*len_s:k*len_s+len_s] = s0
     return s0, S0
 
 #### PARAMETERS #### TODO move them here
@@ -64,10 +64,10 @@ def make_test_traj(goal, objects):
     l,r = get_object_pos_ind()
     init_pos = get_object_pos(s0)
     goal = goal[1]
-    interp_poses_x = np.linspace(init_pos[0],goal[0],T_final+1)
-    interp_poses_y = np.linspace(init_pos[1],goal[1],T_final+1)
-    interp_poses_th = np.linspace(init_pos[2],goal[2],T_final+1)
-    for t in range(1,T_final):
+    interp_poses_x = np.linspace(init_pos[0],goal[0],N+1)
+    interp_poses_y = np.linspace(init_pos[1],goal[1],N+1)
+    interp_poses_th = np.linspace(init_pos[2],goal[2],N+1)
+    for t in range(1,N):
         S0[(t-1)*len_s+l:(t-1)*len_s+r] = [interp_poses_x[t], interp_poses_y[t], \
                                             interp_poses_th[t],]
     return s0, S0

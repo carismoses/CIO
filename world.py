@@ -1,6 +1,6 @@
 import pdb
 import numpy as np
-from util import len_s
+from util import *
 
 class WorldTraj(object):
     def __init__(self, s0, S, objects, Ncontacts, Tfinal):
@@ -9,8 +9,9 @@ class WorldTraj(object):
         self.objects = objects
         self.step(0)
 
-        # initialize to zero
+        # initialize to zero and calulate e for t=0
         self.e_Os, self.e_Hs = np.zeros((Ncontacts, Tfinal, 2)), np.zeros((Ncontacts, Tfinal, 2))
+        self.calc_e(s0, 0, objects)
 
     def step(self, t):
         for object in self.objects:
@@ -18,6 +19,31 @@ class WorldTraj(object):
                 object.step(self.s0,t)
             else:
                 object.step(self.S,t)
+
+    def calc_e(s, t, objects):
+        _, box, _, _ = objects
+        o = box.pose
+
+        # get ro: roj in world frame
+        fj, roj, _ = get_contact_info(s)
+        rj = roj + np.tile(o, (3, 1))
+
+        # get pi_j: project rj onto all contact surfaces
+        pi_j = np.zeros((N, 2))
+        for object in objects:
+            if object.contact_index != None:
+                pi_j[object.contact_index,:] = object.project_point(rj[object.contact_index,:])
+
+        # get pi_o: project rj onto object
+        pi_o = np.zeros((N,2))
+        for j in range(N):
+            pi_o[j,:] = box.project_point(rj[j,:])
+
+        e_O = pi_o - rj
+        e_H = pi_j - rj
+        world_traj.e_Os[:,t,:], world_traj.e_Hs[:,t,:] = e_O, e_H
+
+        return e_O, e_H
 
 # world origin is left bottom with 0 deg being along the x-axis (+ going ccw), all poses are in world frame
 class Object(object):
