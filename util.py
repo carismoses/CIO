@@ -1,12 +1,15 @@
 import numpy as np
 import pdb
+from scipy.interpolate import BPoly
 
 #### PARAMETERS ####
-K = 5 # phases to optimize over
+K = 1 # phases to optimize over
 delT_phase = 0.5
 delT = 0.1
 steps_per_phase = int(delT_phase/delT)
 T_steps = K*steps_per_phase
+T_final = K*delT_phase
+times = np.linspace(0.,T_final, T_steps+1)
 len_s = 33
 len_s_aug = len_s + 9 # includes accelerations
 len_S = len_s*K
@@ -122,6 +125,51 @@ def get_object_accel_ind():
     return 39,42
 
 #### SET FUNCTIONS ####
+def set_object_pos(p, s):
+    i = get_object_pos_ind()
+    s[i[0]:i[1]] = p
+    return s
+
+def set_object_vel(v, s):
+    i = get_object_vel_ind()
+    s[i[0]:i[1]] = v
+    return s
+
+def set_object_accel(a, s):
+    i = get_object_accel_ind()
+    s[i[0]:i[1]] = a
+    return s
+
+def set_gripper1_pos(p, s):
+    i = get_gripper1_pos_ind()
+    s[i[0]:i[1]] = p
+    return s
+
+def set_gripper1_vel(v, s):
+    i = get_gripper1_vel_ind()
+    s[i[0]:i[1]] = v
+    return s
+
+def set_gripper1_accel(a, s):
+    i = get_gripper1_accel_ind()
+    s[i[0]:i[1]] = a
+    return s
+
+def set_gripper2_pos(p, s):
+    i = get_gripper2_pos_ind()
+    s[i[0]:i[1]] = p
+    return s
+
+def set_gripper2_vel(v, s):
+    i = get_gripper2_vel_ind()
+    s[i[0]:i[1]] = v
+    return s
+
+def set_gripper2_accel(a, s):
+    i = get_gripper2_accel_ind()
+    s[i[0]:i[1]] = a
+    return s
+
 def set_fj(fj, s):
     i = get_fj_ind()
     for j in range(N):
@@ -143,8 +191,24 @@ def set_contact(c, s):
 def augment_s(s0, S):
     S_aug = np.zeros(len_S_aug)
 
-    # interpolate contacts, contact forces, poses and velocities
-    for k in range(1, K+1):
+    # perform spline interpolation and get velocities and accelerations for all objects
+    # object
+    set_funcs = set_object_pos, set_object_vel, set_object_accel
+    get_funcs = get_object_pos, get_object_vel
+    S_aug = interpolate_poses(s0, S, S_aug, set_funcs, get_funcs)
+
+    # gripper1
+    set_funcs = set_gripper1_pos, set_gripper1_vel, set_gripper1_accel
+    get_funcs = get_gripper1_pos, get_gripper1_vel
+    S_aug = interpolate_poses(s0, S, S_aug, set_funcs, get_funcs)
+
+    # gripper2
+    set_funcs = set_gripper2_pos, set_gripper2_vel, set_gripper2_accel
+    get_funcs = get_gripper2_pos, get_gripper2_vel
+    S_aug = interpolate_poses(s0, S, S_aug, set_funcs, get_funcs)
+
+    # interpolate contacts, contact forces, and contact poses
+    for k in range(K):
         # get enpoints of interpolation phase
         if k == 0:
             s_left = s0
@@ -163,9 +227,8 @@ def augment_s(s0, S):
         rojs = linspace_matrices(roj_left, roj_right, steps_per_phase)
 
         for p in range(steps_per_phase):
-            s_aug = np.zeros(len_s_aug)
-            # add 1 since t = 0 corresponds to s0
-            t = k*steps_per_phase + p + 1
+            t = k*steps_per_phase + p
+            s_aug = get_s(S_aug, t)
 
             # interpolate contacts (constant)
             s_aug = set_contact(cj_right, s_aug)
@@ -175,27 +238,8 @@ def augment_s(s0, S):
 
             # interpolate contact poses (linear)
             s_aug = set_roj(rojs[p,:,:], s_aug)
+            S_aug = set_s(S_aug, s_aug, t)
 
-        """
-        # if k == 0 use initial accel, otherwise use last calculated ones
-        # previous time step
-        if t == 1:
-            # t=0 accels are zero
-            s_tm1 = np.concatenate([s0, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
-        else:
-            s_tm1 = get_s_aug_t(S_aug, t-1) # fix
-        # current time step
-        s_t = get_s_t(S, t) # fix
-
-        # get accelerations
-        g1accel_t = calc_accel(get_gripper1_vel(s_t), get_gripper1_vel(s_tm1))
-        g2accel_t = calc_accel(get_gripper2_vel(s_t), get_gripper2_vel(s_tm1))
-        oaccel_t = calc_accel(get_object_vel(s_t), get_object_vel(s_tm1))
-
-        s_aug_t = np.concatenate([s_t, g1accel_t, g2accel_t, oaccel_t])
-        S_aug[(t-1)*len_s_aug:(t-1)*len_s_aug+len_s_aug] = s_aug_t
-        """
-        
     return S_aug
 
 def get_s(S, t):
@@ -204,8 +248,15 @@ def get_s(S, t):
     else:
         return S[t*len_s_aug:t*len_s_aug+len_s_aug]
 
-def calc_deriv(x1, x0):
-    return (x1 - x0)/delT
+def set_s(S, s, t):
+    if len(S) == len_S:
+        S[t*len_s:t*len_s+len_s] = s
+    else:
+        S[t*len_s_aug:t*len_s_aug+len_s_aug] = s
+    return S
+
+def calc_deriv(x1, x0, delta):
+    return (x1 - x0)/delta
 
 #### HELPER FUNCTIONS ####
 def get_bounds():
@@ -232,3 +283,62 @@ def linspace_matrices(mat0, mat1, num_steps):
             right = mat1[j,i]
             out_mat[:,j,i] = np.linspace(left, right, num_steps)
     return out_mat
+
+def cubic_spline_func(s0, S, dim, get_funcs):
+    get_pos, get_vel = get_funcs
+    x = np.linspace(0.,T_final, K+1)
+    y = np.zeros((K+1,2))
+    for k in range(K+1):
+        if k == 0:
+            y[k,:] = get_pos(s0)[dim], get_vel(s0)[dim]
+        else:
+            y[k,:] = get_pos(get_s(S,k-1))[dim], get_vel(get_s(S,k-1))[dim]
+
+    f = BPoly.from_derivatives(x,y,orders=3, extrapolate=False)
+    return f
+
+def interpolate_poses(s0, S, S_aug, set_funcs, get_funcs):
+    #pdb.set_trace()
+
+    # get spline functions using the velocities as tangents
+    set_pos, set_vel, set_accel = set_funcs
+    get_pos, get_vel = get_funcs
+    spline_funcs = []
+    for dim in range(3):
+        spline_funcs += [cubic_spline_func(s0, S, dim, get_funcs)]
+
+    # calc poses using spline function
+    i = 0
+    j = 0
+    for t in times:
+        if i != 0:
+            if not t % delT_phase: # this is a keyframe
+                pose = get_pos(get_s(S,j))
+                j += 1
+            else: # get from spline
+                pose = spline_funcs[0](t), spline_funcs[1](t), spline_funcs[2](t)
+            s = get_s(S_aug, i-1)
+            s = set_pos(pose, s)
+            S_aug = set_s(S_aug, s, i-1)
+        i += 1
+
+    # use FD to get velocities and accels #TODO: check that vels are close to ones in dec vars
+    for i in range(T_steps):
+        if i != 0:
+            x_t = get_pos(get_s(S_aug, i))
+            x_tm1 = get_pos(get_s(S_aug, i-1))
+            v = calc_deriv(x_t, x_tm1, delT)
+            s = get_s(S_aug, i)
+            s = set_vel(v, s)
+            S_aug = set_s(S_aug, s, i-1)
+
+    for i in range(T_steps):
+        if i != 0:
+            v_t = get_vel(get_s(S_aug, i))
+            v_tm1 = get_vel(get_s(S_aug, i-1))
+            a = calc_deriv(v_t, v_tm1, delT)
+            s = get_s(S_aug, i)
+            s = set_accel(a, s)
+            S_aug = set_s(S_aug, s, i-1)
+
+    return S_aug
