@@ -228,7 +228,7 @@ def cost_helper(vals, inds, cost_fn = None, grad_fns = None):
 """
 def L(S, s0, objects, goal, fns):
 """
-def L(S, s0, objects, goal):
+def L(S, s0, objects, goal, phase_weights=None, phase=None):
     # augment by calculating the accelerations from the velocities
     # interpolate all of the decision vars to get a finer trajcetory disretization
     S_aug = augment_s(s0, S)
@@ -254,22 +254,26 @@ def L(S, s0, objects, goal):
         """
         phys = phys_helper(s_aug_t, cost_fn=phys_cost)
         """
-        ci = L_CI(s_aug_t, t, objects, world_traj)
+        if phase_weights == None:
+            wci, wphys, wtask = 1.0, 1.0, 1.0
+        else:
+            wci, wphys, wtask = phase_weights[phase]
+        ci = wci*L_CI(s_aug_t, t, objects, world_traj)
         #kinem = L_kinematics(s_aug_t, objects)
-        phys = L_physics(s_aug_t, objects)
+        phys = wphys*L_physics(s_aug_t, objects)
         #cones = L_cone(s_aug_t)
         #cont = L_contact(s_aug_t)
-        vels = L_vels(s_aug_t, s_tm1)
-        task = L_task(s_aug_t, goal, t)
+        #vels = L_vels(s_aug_t, s_tm1)
+        task = wtask*L_task(s_aug_t, goal, t)
         #accel = L_accel(s_aug_t)
-        cost = phys + task + ci #vels + ci #+ kinem + cones + cont + accels
+        cost = ci + phys + task# + ci #vels + ci #+ kinem + cones + cont + accels
 
         cis += ci
         #kinems += kinem
         physs += phys
         #coness += cones
         #conts += cont
-        velss += vels
+        #velss += vels
         tasks += task
         #accels += accel
         tot_cost += cost
@@ -279,7 +283,7 @@ def L(S, s0, objects, goal):
     print("physics:        ", physs)
     #print("cone:           ", coness)
     #print("contact forces: ", conts)
-    print("velocities:     ", velss)
+    #print("velocities:     ", velss)
     print("task:           ", tasks)
     #pring("accels:        ", accels)
     print("TOTAL: ", tot_cost)
@@ -334,66 +338,67 @@ def CIO(goal, objects, s0, S0):
     print(x)
     pdb.set_trace()
     """
-
-    res = minimize(fun=L, x0=S0, args=(s0, objects, goal), method='L-BFGS-B', bounds=bounds)
+    phase_weights = [(0.,0.,1.), (1.,0.1, 1.0), (1.0, 1.0, 1.0)] # (Lci, Lphys, Ltask)
+    x = S0
+    for phase in range(len(phase_weights)):
+        res = minimize(fun=L, x0=x, args=(s0, objects, goal, phase_weights, phase), method='L-BFGS-B', bounds=bounds)
+        x = res['x']
+        print_result(x, s0)
+        """
+        print("Final cost: ", L(x, s0, objects, goal, fns))
+        """
+        print("Final cost: ", L(x, s0, objects, goal))
+        input()
     """
     res = minimize(fun=L, x0=S0, args=(s0, objects, goal, fns), method='L-BFGS-B', bounds = bounds, jac=L_grad)
     """
-    x = res['x']
+    return x
 
-    # output result
-    print("differences in final state: \n", S0-x)
-
+def print_result(x, s0):
     # augement the output
     x_aug = augment_s(s0,x)
+
     # pose trajectory
     print("pose trajectory:")
-    for t in range(1,K+1):
-        s_t = get_s(x, t)
+    for t in range(T_steps):
+        s_t = get_s(x_aug, t)
         box_pose = get_object_pos(s_t)
         print(box_pose, t)
 
     # velocity trajectory
     print("vel trajectory:")
-    for t in range(1,K+1):
-        s_t = get_s(x, t)
+    for t in range(T_steps):
+        s_t = get_s(x_aug, t)
         box_vel = get_object_vel(s_t)
         print(box_vel, t)
 
     # accel trajectory
     print("accel trajectory:")
-    for t in range(1,K+1):
+    for t in range(T_steps):
         s_t = get_s(x_aug, t)
         box_accel = get_object_accel(s_t)
         print(box_accel, t)
 
     # contact forces
     print("contact forces:")
-    for t in range(1,K+1):
-        s_t = get_s(x, t)
+    for t in range(T_steps):
+        s_t = get_s(x_aug, t)
         contact_info = get_contact_info(s_t)
         force = contact_info[0]
         print(t, ":\n", force)
 
     # contact poses
     print("contact poses:")
-    for t in range(1,K+1):
-        s_t = get_s(x, t)
+    for t in range(T_steps):
+        s_t = get_s(x_aug, t)
         contact_info = get_contact_info(s_t)
         pos = contact_info[1]
         print(t, ":\n", pos)
 
     # contact coefficients
     print("coefficients:")
-    for t in range(1,K+1):
-        s_t = get_s(x, t)
+    for t in range(T_steps):
+        s_t = get_s(x_aug, t)
         contact_info = get_contact_info(s_t)
         contact = contact_info[2]
         print(t, ":\n", contact)
-
-    """
-    print("Final cost: ", L(x, s0, objects, goal, fns))
-    """
-    print("Final cost: ", L(x, s0, objects, goal))
-
-    return x
