@@ -3,7 +3,7 @@ import pdb
 from scipy.interpolate import BPoly
 
 #### PARAMETERS ####
-K = 1 # phases to optimize over
+K = 5 # phases to optimize over
 delT_phase = 0.5
 delT = 0.1
 steps_per_phase = int(delT_phase/delT)
@@ -324,21 +324,25 @@ def interpolate_poses(s0, S, S_aug, set_funcs, get_funcs):
 
     # use FD to get velocities and accels #TODO: check that vels are close to ones in dec vars
     for i in range(T_steps):
-        if i != 0:
-            x_t = get_pos(get_s(S_aug, i))
+        if i == 0:
+            x_tm1 = get_pos(s0)
+        else:
             x_tm1 = get_pos(get_s(S_aug, i-1))
-            v = calc_deriv(x_t, x_tm1, delT)
-            s = get_s(S_aug, i)
-            s = set_vel(v, s)
-            S_aug = set_s(S_aug, s, i-1)
+        x_t = get_pos(get_s(S_aug, i))
+        v = calc_deriv(x_t, x_tm1, delT)
+        s = get_s(S_aug, i)
+        s = set_vel(v, s)
+        S_aug = set_s(S_aug, s, i)
 
     for i in range(T_steps):
-        if i != 0:
-            v_t = get_vel(get_s(S_aug, i))
-            v_tm1 = get_vel(get_s(S_aug, i-1))
-            a = calc_deriv(v_t, v_tm1, delT)
-            s = get_s(S_aug, i)
-            s = set_accel(a, s)
-            S_aug = set_s(S_aug, s, i-1)
+        if i == 0:
+            v_tm1 = get_vel(s0)
+        else:
+            v_tm1 = get_vel(get_s(S_aug,i-1))
+        v_t = get_vel(get_s(S_aug, i))
+        a = calc_deriv(v_t, v_tm1, delT)
+        s = get_s(S_aug, i)
+        s = set_accel(a, s)
+        S_aug = set_s(S_aug, s, i)
 
     return S_aug
