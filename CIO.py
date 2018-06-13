@@ -74,8 +74,8 @@ def L_CI(s, t, objects, world_traj):
     _, _, cj = get_contact_info(s)
 
     # calculate the edots
-    e_O_dot = calc_deriv(e_O, e_O_tm1)
-    e_H_dot = calc_deriv(e_H, e_H_tm1)
+    e_O_dot = calc_deriv(e_O, e_O_tm1, delT)
+    e_H_dot = calc_deriv(e_H, e_H_tm1, delT)
 
     # calculate the contact invariance cost
     cost = 0
@@ -246,10 +246,10 @@ def L(S, s0, objects, goal):
         if t == 1:
             s_tm1 = s0
         else:
-            s_tm1 = get_s(S_int, t-1)
+            s_tm1 = get_s(S_aug, t-1)
 
         world_traj.step(t)
-        s_aug_t = get_s(S_int,t)
+        s_aug_t = get_s(S_aug,t)
 
         """
         phys = phys_helper(s_aug_t, cost_fn=phys_cost)
