@@ -3,7 +3,8 @@ import pdb
 from world import Line, Rectangle
 from CIO import CIO
 
-testing = True
+testing1 = False
+testing2 = False
 
 #### INITIALIZE DECISION VARIABLES ####
 def init_vars(objects):
@@ -24,7 +25,7 @@ def init_vars(objects):
     # j = 1 gripper 2 contact
     # j = 2 ground contact
     # rO is in object (box) frame
-    con0 = [0.0, 0.0,  0.0, 15.0, 0.1] # gripper1
+    con0 = [0.0, 0.0,  0.0, 15.0, 0.0] # gripper1
     con1 = [0.0, 0.0, 10.0, 15.0, 0.0] # gripper2
     con2 = [0.0, 0.0,  5.0, 0.0, 1.0] # ground
 
@@ -65,10 +66,10 @@ def make_test_traj(goal, objects):
     vl,vr = get_object_vel_ind()
     init_pos = get_object_pos(s0)
     goal = goal[1]
-    interp_poses_x = np.linspace(init_pos[0],goal[0],N+1)
-    interp_poses_y = np.linspace(init_pos[1],goal[1],N+1)
-    interp_poses_th = np.linspace(init_pos[2],goal[2],N+1)
-    for t in range(1,N+1):
+    interp_poses_x = np.linspace(init_pos[0],goal[0],K+1)
+    interp_poses_y = np.linspace(init_pos[1],goal[1],K+1)
+    interp_poses_th = np.linspace(init_pos[2],goal[2],K+1)
+    for t in range(1,K+1):
         S0[(t-1)*len_s+l:(t-1)*len_s+r] = [interp_poses_x[t], interp_poses_y[t], \
                                             interp_poses_th[t]]
         vx = calc_deriv(interp_poses_x[t], interp_poses_x[t-1], delT_phase)
@@ -77,12 +78,26 @@ def make_test_traj(goal, objects):
         S0[(t-1)*len_s+vl:(t-1)*len_s+vr] = [vx, vy, vth]
     return s0, S0
 
+
+def make_test_traj2(goal, objects):
+    s0, S0 = init_vars(objects)
+    l,r = get_object_pos_ind()
+    vl,vr = get_object_vel_ind()
+    init_pos = get_object_pos(s0)
+    goal = goal[1]
+    for t in range(1,K+1):
+        if t == K:
+            S0[(t-1)*len_s+l:(t-1)*len_s+r] = goal
+    return s0, S0
+
 #### MAIN FUNCTION ####
 def main():
     pdb.set_trace()
     goal, objects = init_objects()
-    if testing:
+    if testing1:
         s0, S0 = make_test_traj(goal, objects)
+    if testing2:
+        s0, S0 = make_test_traj2(goal, objects)
     else:
         s0, S0 = init_vars(objects)
     x = CIO(goal, objects, s0, S0)
