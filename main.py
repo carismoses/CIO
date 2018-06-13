@@ -3,7 +3,7 @@ import pdb
 from world import Line, Rectangle
 from CIO import CIO
 
-testing = False
+testing = True
 
 #### INITIALIZE DECISION VARIABLES ####
 def init_vars(objects):
@@ -62,18 +62,24 @@ from util import *
 def make_test_traj(goal, objects):
     s0, S0 = init_vars(objects)
     l,r = get_object_pos_ind()
+    vl,vr = get_object_vel_ind()
     init_pos = get_object_pos(s0)
     goal = goal[1]
     interp_poses_x = np.linspace(init_pos[0],goal[0],N+1)
     interp_poses_y = np.linspace(init_pos[1],goal[1],N+1)
     interp_poses_th = np.linspace(init_pos[2],goal[2],N+1)
-    for t in range(1,N):
+    for t in range(1,N+1):
         S0[(t-1)*len_s+l:(t-1)*len_s+r] = [interp_poses_x[t], interp_poses_y[t], \
-                                            interp_poses_th[t],]
+                                            interp_poses_th[t]]
+        vx = calc_deriv(interp_poses_x[t], interp_poses_x[t-1], delT_phase)
+        vy = calc_deriv(interp_poses_y[t], interp_poses_y[t-1], delT_phase)
+        vth = calc_deriv(interp_poses_th[t], interp_poses_th[t-1], delT_phase)
+        S0[(t-1)*len_s+vl:(t-1)*len_s+vr] = [vx, vy, vth]
     return s0, S0
 
 #### MAIN FUNCTION ####
 def main():
+    pdb.set_trace()
     goal, objects = init_objects()
     if testing:
         s0, S0 = make_test_traj(goal, objects)
