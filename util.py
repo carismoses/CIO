@@ -28,8 +28,7 @@ phys_lamb = 10.0    # physics have to make sense
 cone_lamb = 1.0     # contact force in friction cone
 cont_lamb = 1.0     # discourage large contact forces
 vel_lamb = 1.0      # velocities have to match change in poses
-task_lamb = 100.    # task (final position)
-accel_lamb = .001   # small accelerations
+accel_lamb = .1   # small accelerations
 
 #### GET FUNCTIONS ####
 # TODO: call indice functions in here so don't have to change in 2 places...

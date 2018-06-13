@@ -173,7 +173,7 @@ def L_task(s, goal, t):
     I = 1 if t == (T_steps-1) else 0
     hb = get_object_pos(s)
     h_star = goal[1]
-    cost = task_lamb*I*np.linalg.norm(hb - h_star)**2
+    cost = np.linalg.norm(hb - h_star)**2
     return cost
 
 def L_accel(s):
@@ -264,9 +264,9 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
         #cones = L_cone(s_aug_t)
         #cont = L_contact(s_aug_t)
         #vels = L_vels(s_aug_t, s_tm1)
-        task = wtask*L_task(s_aug_t, goal, t)
-        #accel = L_accel(s_aug_t)
-        cost = ci + phys + task# + ci #vels + ci #+ kinem + cones + cont + accels
+        accel = L_accel(s_aug_t)
+        task = wtask*(L_task(s_aug_t, goal, t) + accel)
+        cost = ci + phys + task# + ci #vels + ci #+ kinem + cones + cont
 
         cis += ci
         #kinems += kinem
@@ -274,8 +274,8 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
         #coness += cones
         #conts += cont
         #velss += vels
+        accels += accel
         tasks += task
-        #accels += accel
         tot_cost += cost
 
     print("cis:             ", cis)
@@ -284,8 +284,8 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
     #print("cone:           ", coness)
     #print("contact forces: ", conts)
     #print("velocities:     ", velss)
+    print("accels:     ", accels)
     print("task:           ", tasks)
-    #pring("accels:        ", accels)
     print("TOTAL: ", tot_cost)
     return tot_cost
 
@@ -316,10 +316,7 @@ def L_grad(S, s0, objects, goal, fns):
 """
 
 #### MAIN FUNCTION ####
-def CIO(goal, objects, s0, S0):
-    #pdb.set_trace()
-    bounds = get_bounds()
-
+def CIO(goal, objects, s0, S0, params=None):
     """
     # get cost functions and their derivatives
     phys_cost, phys_grad = phys_fns()
@@ -338,6 +335,9 @@ def CIO(goal, objects, s0, S0):
     print(x)
     pdb.set_trace()
     """
+    #pdb.set_trace()
+    bounds = get_bounds()
+
     phase_weights = [(0.,0.,1.), (1.,0.1, 1.0), (1.0, 1.0, 1.0)] # (Lci, Lphys, Ltask)
     x = S0
     for phase in range(len(phase_weights)):
