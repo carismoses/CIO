@@ -8,22 +8,6 @@ import theano
 import theano.tensor as T
 from theano.ifelse import ifelse
 
-#### THEANO VARIABLES AND HELPER FUNCTIONS ####
-fj = T.dmatrix('fj')
-roj = T.dmatrix('roj')
-cj = T.dvector('cj')
-ov = T.dvector('ov')
-oa = T.dvector('oa')
-one = T.constant(0.)
-zero = T.constant(1.)
-
-def TNorm(x):
-    return T.sum(T.sqr(x))
-
-# 2D cross product
-def TCross(a, b):
-    return T.as_tensor([a[0]*b[1] - a[1]*b[0]])
-
 #### SURFACE NORMALS ####
 def get_normals(angles):
     nj = np.zeros((N, 2))
@@ -31,41 +15,6 @@ def get_normals(angles):
         norm_angle = angles[j] + np.pi/2
         nj[j,:] = np.array([np.cos(norm_angle), np.sin(norm_angle)])
     return nj
-
-#### OBJECTIVE FUNCTIONS ####
-"""
-def phys_fns():
-    # calculate sum of forces on object
-    # calc frictional force only if object is moving in x direction
-    f_tot = sum([cj[j]*fj[j] for j in range(N)])
-    f_tot = T.inc_subtensor(f_tot[1], -mass*gravity)
-    coeff = ifelse(T.gt(ov[0], zero), one, ifelse(T.lt(ov[0], 0), -one, zero))
-    fric = -1*coeff*mu*cj[2]*fj[2,1]
-    f_tot = T.inc_subtensor(f_tot[0], fric)
-
-    # calc change in linear momentum
-    p_dot = mass*oa[0:2]
-
-    # calc sum of moments on object (friction acts on COM? gravity does)
-    # TODO: correct calc of I (moment of inertia)
-    I = mass
-    m_tot = sum(TCross(cj[j]*fj[j,:], roj[j,:] + np.array([-5, -5])) for j in range(N))
-
-    # calc change in angular momentum
-    l_dot = I*oa[2]
-
-    cost_fn =  phys_lamb*(TNorm(f_tot - p_dot)**2 + TNorm(m_tot - l_dot)**2)
-    cost = theano.function([fj, roj, cj, ov, oa], cost_fn)
-    gc_fj = T.grad(cost_fn, fj)
-    gc_roj = T.grad(cost_fn, roj)
-    gc_cj = T.grad(cost_fn, cj)
-    gc_ov = T.grad(cost_fn, ov)
-    grad_fn = [theano.function([fj, roj, cj, ov, oa], gc_fj),
-                theano.function([fj, roj, cj, ov, oa], gc_roj),
-                theano.function([fj, roj, cj, ov, oa], gc_cj),
-                theano.function([fj, roj, cj, ov, oa], gc_ov, on_unused_input='ignore')]
-    return cost, grad_fn
-"""
 
 #### OBJECTIVE FUNCTIONS ####
 def L_CI(s, t, objects, world_traj):
@@ -187,47 +136,7 @@ def L_accel(s):
                 + np.linalg.norm(g2_dotdot)**2)
     return cost
 
-#### HELPER FUNCTIONS ####
-"""
-def phys_helper(s, cost_fn=None, grad_fns=None):
-    fj_val, roj_val, cj_val = get_contact_info(s)
-    ov_val = get_object_vel(s)
-    oa_val = get_object_accel(s)
-    vals = [fj_val, roj_val, cj_val, ov_val, oa_val]
-
-    ind = []
-    ind += [get_fj_ind()]
-    ind += [get_roj_ind()]
-    ind += [get_contact_ind()]
-    ind += [get_object_vel_ind()]
-
-    cost = cost_helper(vals, ind, cost_fn=cost_fn, grad_fns=grad_fns)
-    return cost
-
-def cost_helper(vals, inds, cost_fn = None, grad_fns = None):
-    if cost_fn != None:
-        return cost_fn(vals[0], vals[1], vals[2], vals[3], vals[4]) #TODO: same as 4 lines down
-    else:
-        grad = np.zeros((len_s))
-        for i in range(len(grad_fns)):
-            this_grad = grad_fns[i](vals[0], vals[1], vals[2], vals[3], vals[4]) #TODO: make this work for variable amounts of vals
-            ind = inds[i]
-            h = len(ind)
-            if type(ind[0]) is tuple:
-                w = len(ind[0])
-                for k in range(h):
-                    for l in range(w):
-                        grad[ind[k][l]] = this_grad[k][l]
-            else:
-                for k in range(h):
-                    grad[ind[k]] = this_grad[k]
-        return grad
-"""
-
-#### MAIN OBJECTIVE FUNCTION AND GRADIENT ####
-"""
-def L(S, s0, objects, goal, fns):
-"""
+#### MAIN OBJECTIVE FUNCTION ####
 def L(S, s0, objects, goal, phase_weights=None, phase=None):
     # augment by calculating the accelerations from the velocities
     # interpolate all of the decision vars to get a finer trajcetory disretization
@@ -238,10 +147,6 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
     cis, kinems, physs, coness, conts, velss, tasks, accels = \
                             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
-    """
-    phys_cost, phys_grad = fns
-    """
-
     for t in range(1,T_steps):
         if t == 1:
             s_tm1 = s0
@@ -251,9 +156,6 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
         world_traj.step(t)
         s_aug_t = get_s(S_aug,t)
 
-        """
-        phys = phys_helper(s_aug_t, cost_fn=phys_cost)
-        """
         if phase_weights == None:
             wci, wphys, wtask = 1.0, 1.0, 1.0
         else:
@@ -289,45 +191,8 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
     print("TOTAL: ", tot_cost)
     return tot_cost
 
-"""
-def L_grad(S, s0, objects, goal, fns):
-    # calculate the interpolated values between the key frames (for now skip) -> longer S
-    S_aug = augment_s(s0, S)
-    world_traj = WorldTraj(s0, S, objects)
-    phys_cost_fn, phys_grad_fn = fns
-    grad_S = []
-
-    for t in range(1,N):
-        if t == 1:
-            s_tm1 = s0
-        else:
-            s_tm1 = get_s_aug_t(S_aug, t-1)
-
-        world_traj.step(t)
-        s_aug_t = get_s_aug_t(S_aug,t)
-
-        # sum up total for this time step
-        phys_grad = phys_helper(s_aug_t, grad_fns=phys_grad_fn)
-        grad_s = phys_grad #+ task + vels +ci + kinem + cones + cont + accels
-
-        # append to overall gradient
-        grad_S = np.concatenate([grad_S, grad_s])
-    return grad_S
-"""
-
 #### MAIN FUNCTION ####
 def CIO(goal, objects, s0, S0, params=None):
-    """
-    # get cost functions and their derivatives
-    phys_cost, phys_grad = phys_fns()
-    #task_cost, task_grad = task_fns()
-    fns = [phys_cost, phys_grad]
-    """
-    """
-    x = L(S0, s0, objects, goal, fns)
-    print(x)
-    """
-
     """
     # FOR TESTING A SINGLE traj
     pdb.set_trace()
@@ -344,14 +209,8 @@ def CIO(goal, objects, s0, S0, params=None):
         res = minimize(fun=L, x0=x, args=(s0, objects, goal, phase_weights, phase), method='L-BFGS-B', bounds=bounds)
         x = res['x']
         print_result(x, s0)
-        """
-        print("Final cost: ", L(x, s0, objects, goal, fns))
-        """
         print("Final cost: ", L(x, s0, objects, goal))
         input()
-    """
-    res = minimize(fun=L, x0=S0, args=(s0, objects, goal, fns), method='L-BFGS-B', bounds = bounds, jac=L_grad)
-    """
     return x
 
 def print_result(x, s0):
