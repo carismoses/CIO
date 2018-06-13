@@ -3,14 +3,14 @@ import numpy as np
 from util import *
 
 class WorldTraj(object):
-    def __init__(self, s0, S, objects, Ncontacts, Tfinal):
+    def __init__(self, s0, S, objects):
         self.s0 = s0
         self.S = S
         self.objects = objects
         self.step(0)
 
         # initialize to zero and calulate e for t=0
-        self.e_Os, self.e_Hs = np.zeros((Ncontacts, Tfinal, 2)), np.zeros((Ncontacts, Tfinal, 2))
+        self.e_Os, self.e_Hs = np.zeros((N, T_steps, 2)), np.zeros((N, T_steps, 2))
         self.calc_e(s0, 0, objects)
 
     def step(self, t):
@@ -20,7 +20,7 @@ class WorldTraj(object):
             else:
                 object.step(self.S,t)
 
-    def calc_e(s, t, objects):
+    def calc_e(self, s, t, objects):
         _, box, _, _ = objects
         o = box.pose
 
@@ -41,7 +41,7 @@ class WorldTraj(object):
 
         e_O = pi_o - rj
         e_H = pi_j - rj
-        world_traj.e_Os[:,t,:], world_traj.e_Hs[:,t,:] = e_O, e_H
+        self.e_Os[:,t,:], self.e_Hs[:,t,:] = e_O, e_H
 
         return e_O, e_H
 
