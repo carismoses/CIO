@@ -1,6 +1,7 @@
 import pdb
 import numpy as np
 from util import *
+import params as p
 
 class WorldTraj(object):
     def __init__(self, s0, S, objects):
@@ -10,7 +11,7 @@ class WorldTraj(object):
         self.step(0)
 
         # initialize to zero and calulate e for t=0
-        self.e_Os, self.e_Hs = np.zeros((N, T_steps, 2)), np.zeros((N, T_steps, 2))
+        self.e_Os, self.e_Hs = np.zeros((p.N, p.T_steps, 2)), np.zeros((p.N, p.T_steps, 2))
         self.calc_e(s0, 0, objects)
 
     def step(self, t):
@@ -29,14 +30,14 @@ class WorldTraj(object):
         rj = roj + np.tile(o, (3, 1))
 
         # get pi_j: project rj onto all contact surfaces
-        pi_j = np.zeros((N, 2))
+        pi_j = np.zeros((p.N, 2))
         for object in objects:
             if object.contact_index != None:
                 pi_j[object.contact_index,:] = object.project_point(rj[object.contact_index,:])
 
         # get pi_o: project rj onto object
-        pi_o = np.zeros((N,2))
-        for j in range(N):
+        pi_o = np.zeros((p.N,2))
+        for j in range(p.N):
             pi_o[j,:] = box.project_point(rj[j,:])
 
         e_O = pi_o - rj
@@ -65,9 +66,9 @@ class Object(object):
                 self.angle = S[6*self.pose_index+2]
                 self.vel = S[6*self.pose_index+3:6*self.pose_index+7]
             else:
-                self.pose = S[6*self.pose_index+(t-1)*len_s:6*self.pose_index+(t-1)*len_s+2]
-                self.angle = S[6*self.pose_index+(t-1)*len_s+2]
-                self.vel = S[6*self.pose_index+(t-1)*len_s+3:6*self.pose_index+(t-1)*len_s+7]
+                self.pose = S[6*self.pose_index+(t-1)*p.len_s:6*self.pose_index+(t-1)*p.len_s+2]
+                self.angle = S[6*self.pose_index+(t-1)*p.len_s+2]
+                self.vel = S[6*self.pose_index+(t-1)*p.len_s+3:6*self.pose_index+(t-1)*p.len_s+7]
 
     def check_collisions(self, col_object):
         pts = self.discretize()
