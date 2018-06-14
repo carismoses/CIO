@@ -1,37 +1,9 @@
 import numpy as np
 import pdb
 from scipy.interpolate import BPoly
-
-#### PARAMETERS ####
-K = 5 # phases to optimize over
-delT_phase = 0.5
-delT = 0.1
-steps_per_phase = int(delT_phase/delT)
-T_steps = K*steps_per_phase
-T_final = K*delT_phase
-times = np.linspace(0.,T_final, T_steps+1)
-len_s = 33
-len_s_aug = len_s + 9 # includes accelerations
-len_S = len_s*K
-len_S_aug = len_s_aug*K*steps_per_phase
-
-# physical parameters
-N = 3 # 2 grippers and 1 ground contact
-mass = 1.0 # mass
-gravity = 10.0 # gravity
-mu = 0.1 # friction coefficient
-
-# objective function weights
-ci_lamb = 1.0       # contact invariance (have to be touching object to activate contact force)
-kin_lamb = .1       # object collisisions
-phys_lamb = 10.0    # physics have to make sense
-cone_lamb = 1.0     # contact force in friction cone
-cont_lamb = 1.0     # discourage large contact forces
-vel_lamb = 1.0      # velocities have to match change in poses
-accel_lamb = .1   # small accelerations
+import params as p
 
 #### GET FUNCTIONS ####
-# TODO: call indice functions in here so don't have to change in 2 places...
 def get_gripper1_pos(s):
     i,j = get_gripper1_pos_ind()
     return s[i:j]
@@ -57,15 +29,15 @@ def get_object_vel(s):
     return s[i:j]
 
 def get_contact_info(s):
-    fj = np.zeros((N,2))
-    roj = np.zeros((N,2))
-    cj = np.zeros(N)
+    fj = np.zeros((p.N,2))
+    roj = np.zeros((p.N,2))
+    cj = np.zeros(p.N)
 
     i = get_fj_ind()
     k = get_roj_ind()
     l = get_contact_ind()
 
-    for j in range(N):
+    for j in range(p.N):
         fj[j,:] = s[i[j][0]:i[j][1]]
         roj[j,:] = s[k[j][0]:k[j][1]]
         cj[j] = s[l[j]]
@@ -171,13 +143,13 @@ def set_gripper2_accel(a, s):
 
 def set_fj(fj, s):
     i = get_fj_ind()
-    for j in range(N):
+    for j in range(p.N):
         s[i[j][0]:i[j][1]] = fj[j,:]
     return s
 
 def set_roj(roj, s):
     i = get_roj_ind()
-    for j in range(N):
+    for j in range(p.N):
         s[i[j][0]:i[j][1]] = roj[j,:]
     return s
 
@@ -188,7 +160,7 @@ def set_contact(c, s):
 
 #### AUGMENT DECISION VARIABLE ####
 def augment_s(s0, S):
-    S_aug = np.zeros(len_S_aug)
+    S_aug = np.zeros(p.len_S_aug)
 
     # perform spline interpolation and get velocities and accelerations for all objects
     # object
@@ -207,7 +179,7 @@ def augment_s(s0, S):
     S_aug = interpolate_poses(s0, S, S_aug, set_funcs, get_funcs)
 
     # interpolate contacts, contact forces, and contact poses
-    for k in range(K):
+    for k in range(p.K):
         # get enpoints of interpolation phase
         if k == 0:
             s_left = s0
@@ -220,38 +192,38 @@ def augment_s(s0, S):
         fj_right, roj_right, cj_right = get_contact_info(s_right)
 
         # interpolate the contact forces (linear)
-        fjs = linspace_matrices(fj_left, fj_right, steps_per_phase)
+        fjs = linspace_matrices(fj_left, fj_right, p.steps_per_phase)
 
         # interpolate the contact poses (linear)
-        rojs = linspace_matrices(roj_left, roj_right, steps_per_phase)
+        rojs = linspace_matrices(roj_left, roj_right, p.steps_per_phase)
 
-        for p in range(steps_per_phase):
-            t = k*steps_per_phase + p
+        for ph in range(p.steps_per_phase):
+            t = k*p.steps_per_phase + ph
             s_aug = get_s(S_aug, t)
 
             # interpolate contacts (constant)
             s_aug = set_contact(cj_right, s_aug)
 
             # interpolate contact forces (linear)
-            s_aug = set_fj(fjs[p,:,:], s_aug)
+            s_aug = set_fj(fjs[ph,:,:], s_aug)
 
             # interpolate contact poses (linear)
-            s_aug = set_roj(rojs[p,:,:], s_aug)
+            s_aug = set_roj(rojs[ph,:,:], s_aug)
             S_aug = set_s(S_aug, s_aug, t)
 
     return S_aug
 
 def get_s(S, t):
-    if len(S) == len_S:
-        return S[t*len_s:t*len_s+len_s]
+    if len(S) == p.len_S:
+        return S[t*p.len_s:t*p.len_s+p.len_s]
     else:
-        return S[t*len_s_aug:t*len_s_aug+len_s_aug]
+        return S[t*p.len_s_aug:t*p.len_s_aug+p.len_s_aug]
 
 def set_s(S, s, t):
-    if len(S) == len_S:
-        S[t*len_s:t*len_s+len_s] = s
+    if len(S) == p.len_S:
+        S[t*p.len_s:t*p.len_s+p.len_s] = s
     else:
-        S[t*len_s_aug:t*len_s_aug+len_s_aug] = s
+        S[t*p.len_s_aug:t*p.len_s_aug+p.len_s_aug] = s
     return S
 
 def calc_deriv(x1, x0, delta):
@@ -262,8 +234,8 @@ def get_bounds():
     contact_ind = get_contact_ind()
     ground_ind = get_fj_ind()[2][0]
     bounds = []
-    for t in range(K):
-        for v in range(len_s):
+    for t in range(p.K):
+        for v in range(p.len_s):
             if v in contact_ind:
                 bounds.append((0.,1.)) # c's are between 0 and 1
             elif v == ground_ind:
@@ -285,9 +257,9 @@ def linspace_matrices(mat0, mat1, num_steps):
 
 def cubic_spline_func(s0, S, dim, get_funcs):
     get_pos, get_vel = get_funcs
-    x = np.linspace(0.,T_final, K+1)
-    y = np.zeros((K+1,2))
-    for k in range(K+1):
+    x = np.linspace(0.,p.T_final, p.K+1)
+    y = np.zeros((p.K+1,2))
+    for k in range(p.K+1):
         if k == 0:
             y[k,:] = get_pos(s0)[dim], get_vel(s0)[dim]
         else:
@@ -309,9 +281,10 @@ def interpolate_poses(s0, S, S_aug, set_funcs, get_funcs):
     # calc poses using spline function
     i = 0
     j = 0
+    times = np.linspace(0.,p.T_final, p.T_steps+1)
     for t in times:
         if i != 0:
-            if not t % delT_phase: # this is a keyframe
+            if not t % p.delT_phase: # this is a keyframe
                 pose = get_pos(get_s(S,j))
                 j += 1
             else: # get from spline
@@ -322,24 +295,24 @@ def interpolate_poses(s0, S, S_aug, set_funcs, get_funcs):
         i += 1
 
     # use FD to get velocities and accels #TODO: check that vels are close to ones in dec vars
-    for i in range(T_steps):
+    for i in range(p.T_steps):
         if i == 0:
             x_tm1 = get_pos(s0)
         else:
             x_tm1 = get_pos(get_s(S_aug, i-1))
         x_t = get_pos(get_s(S_aug, i))
-        v = calc_deriv(x_t, x_tm1, delT)
+        v = calc_deriv(x_t, x_tm1, p.delT)
         s = get_s(S_aug, i)
         s = set_vel(v, s)
         S_aug = set_s(S_aug, s, i)
 
-    for i in range(T_steps):
+    for i in range(p.T_steps):
         if i == 0:
             v_tm1 = get_vel(s0)
         else:
             v_tm1 = get_vel(get_s(S_aug,i-1))
         v_t = get_vel(get_s(S_aug, i))
-        a = calc_deriv(v_t, v_tm1, delT)
+        a = calc_deriv(v_t, v_tm1, p.delT)
         s = get_s(S_aug, i)
         s = set_accel(a, s)
         S_aug = set_s(S_aug, s, i)
