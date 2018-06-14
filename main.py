@@ -88,7 +88,7 @@ def make_test_traj2(s0, S0, goal, objects):
     return s0, S0
 
 #### MAIN FUNCTION ####
-def main(test_params):
+def main(test_params={}):
     #pdb.set_trace()
 
     # initialize objects

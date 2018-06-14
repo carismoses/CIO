@@ -187,9 +187,11 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
     #print("cone:           ", coness)
     #print("contact forces: ", conts)
     #print("velocities:     ", velss)
+    '''
     print("accels:     ", accels)
     print("task:           ", tasks)
     print("TOTAL: ", tot_cost)
+    '''
     return tot_cost
 
 #### MAIN FUNCTION ####
@@ -214,7 +216,7 @@ def CIO(goal, objects, s0, S0):
         final_cost = res['fun']
 
         print_result(x, s0)
-        print("Final cost: ", final_cost)
+
     return x, nit, final_cost
 
 def print_result(x, s0):

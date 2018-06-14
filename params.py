@@ -27,7 +27,7 @@ class Params(object):
     def __init__(self, test_params = {}, num_moveable_objects = 3):
         self.default_params = {'K': 5, 'delT': 0.1, 'delT_phase': 0.5, 'N': 3, \
                                 'mass': 1.0, 'gravity': 10.0, 'mu': 0.1, \
-                                'accel_lamb': 0.1, 'num_objs': num_moveable_objects}
+                                'accel_lamb': 1.e-15, 'num_objs': num_moveable_objects}
         self.test_params = test_params
         self.set_test_params()
         self.set_default_params()
