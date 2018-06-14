@@ -32,8 +32,8 @@ def L_CI(s, t, objects, world_traj):
     for j in range(p.N):
         cost += cj[j]*(np.linalg.norm(e_O[j,:])**2 + np.linalg.norm(e_H[j,:])**2 \
                 + np.linalg.norm(e_O_dot[j,:])**2 + np.linalg.norm(e_H_dot)**2)
-    return ci_lamb*cost
-
+    #return ci_lamb*cost
+    return cost
 # includes 1) limits on finger and arm joint angles (doesn't apply)
 #          2) distance from fingertips to palms limit (doesn't apply)
 #          3) TODO: collisions between fingers
@@ -80,7 +80,8 @@ def L_physics(s, objects):
     # calc change in angular momentum
     l_dot = I*oa[2]
 
-    cost =  phys_lamb*(np.linalg.norm(f_tot - p_dot)**2 + np.linalg.norm(m_tot - l_dot)**2)
+    #cost = phys_lamb*(np.linalg.norm(f_tot - p_dot)**2 + np.linalg.norm(m_tot - l_dot)**2)
+    cost = np.linalg.norm(f_tot - p_dot)**2 + np.linalg.norm(m_tot - l_dot)**2
     return cost
 
 def L_cone(s):
@@ -161,9 +162,9 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
             wci, wphys, wtask = 1.0, 1.0, 1.0
         else:
             wci, wphys, wtask = phase_weights
-        #ci = wci*L_CI(s_aug_t, t, objects, world_traj)
+        ci = wci*L_CI(s_aug_t, t, objects, world_traj)
         #kinem = L_kinematics(s_aug_t, objects)
-        #phys = wphys*L_physics(s_aug_t, objects)
+        phys = wphys*L_physics(s_aug_t, objects)
         #cones = L_cone(s_aug_t)
         #cont = L_contact(s_aug_t)
         #vels = L_vels(s_aug_t, s_tm1)
@@ -206,7 +207,7 @@ def CIO(goal, objects, s0, S0):
     #pdb.set_trace()
     bounds = get_bounds()
 
-    all_phase_weights =  [(0.,0.,1.),]#[(0.,0.,1.), (1.,0.1, 1.0), (1.0, 1.0, 1.0)] # (Lci, Lphys, Ltask)
+    all_phase_weights =  [(0.,0.,1.), (1.,0.1, 1.0)] #, (1.0, 1.0, 1.0)] # (Lci, Lphys, Ltask)
     x = S0
     for phase in range(len(all_phase_weights)):
         phase_weights = all_phase_weights[phase]
@@ -216,7 +217,7 @@ def CIO(goal, objects, s0, S0):
         final_cost = res['fun']
 
         print_result(x, s0)
-
+        print("Final cost: ", final_cost)
     return x, nit, final_cost
 
 def print_result(x, s0):
