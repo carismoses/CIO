@@ -6,7 +6,7 @@ from datetime import datetime, time
 import params as p
 import pdb
 # outer loop to call CIO's main function with different params to test
-accel_lamb_test_params = [1.e-20, 1.e-18, 1.e-15, 1e-8, 1.e-3]
+accel_lamb_test_params = [1.e-15, 1.e-10, 1.e-5, 1.e-3, 1.e-1, 1., 1.e1]
 
 date_time = datetime.now().strftime("%Y-%m-%d") + '_' + datetime.now().strftime("%H:%M:%S")
 filename = '/Users/caris/CIO/output_files/' + date_time + '_accel_lambs.csv'
