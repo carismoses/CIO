@@ -181,7 +181,7 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
 
         if verbose:
             print_step(tot_cost)
-        return tot_cost
+    return tot_cost
 
 #### MAIN FUNCTION ####
 def CIO(goal, objects, s0, S0):
