@@ -61,7 +61,7 @@ def make_header():
     S_final_names = []
     for k in range(p.K):
         for j in range(len(s_names)):
-            S_final_names += [s0_names[j] + '_K=' + str(k+1)]
+            S_final_names += [s_names[j] + '_K=' + str(k+1)]
 
     # make a dummy param dict just to get keys
     p_dummy = p.Params()
