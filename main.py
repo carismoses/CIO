@@ -109,9 +109,9 @@ def main(test_params={}):
         s0, S0 = make_test_traj2(s0, S0, goal, objects)
 
     # run CIO
-    x, nit, final_cost = CIO(goal, objects, s0, S0)
+    x, nit, final_cost, all_final_costs = CIO(goal, objects, s0, S0)
 
-    return s0, S0, x, final_cost, nit
+    return s0, S0, x, final_cost, nit, all_final_costs
 
 if __name__ == '__main__':
     main()
