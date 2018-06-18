@@ -124,7 +124,7 @@ def L_task(s, goal, t):
     I = 1 if t == (p.T_steps-1) else 0
     hb = get_object_pos(s)
     h_star = goal[1]
-    cost = np.linalg.norm(hb - h_star)**2
+    cost = I*np.linalg.norm(hb - h_star)**2
     return cost
 
 def L_accel(s):
