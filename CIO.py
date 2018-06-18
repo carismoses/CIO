@@ -9,6 +9,8 @@ import theano.tensor as T
 from theano.ifelse import ifelse
 import params as p
 
+verbose = False
+
 #### SURFACE NORMALS ####
 def get_normals(angles):
     nj = np.zeros((N, 2))
@@ -177,15 +179,9 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
         tasks += task
         tot_cost += cost
 
-    print("cis:            ", cis)
-    print("kinematics:     ", kinems)
-    print("physics:        ", physs)
-    print("cone:           ", coness)
-    print("contact forces: ", conts)
-    print("accels:         ", accels)
-    print("task:           ", tasks)
-    print("TOTAL: ", tot_cost)
-    return tot_cost
+        if verbose:
+            print_step(tot_cost)
+        return tot_cost
 
 #### MAIN FUNCTION ####
 def CIO(goal, objects, s0, S0):
@@ -215,6 +211,16 @@ def CIO(goal, objects, s0, S0):
         phase_info[phase] = x_init, S0, x_final, final_cost, nit, all_final_costs
         x_init = x_final
     return phase_info
+
+def print_step(tot_cost):
+    print("cis:            ", cis)
+    print("kinematics:     ", kinems)
+    print("physics:        ", physs)
+    print("cone:           ", coness)
+    print("contact forces: ", conts)
+    print("accels:         ", accels)
+    print("task:           ", tasks)
+    print("TOTAL: ", tot_cost)
 
 def print_result(x, s0):
     # augement the output
