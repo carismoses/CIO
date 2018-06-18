@@ -13,7 +13,7 @@ filename = '/Users/caris/CIO/output_files/' + date_time + '_accel_lambs.csv'
 
 def test_params():
     for param_val in accel_lamb_test_params:
-        s0, S0, S_final, final_cost, nit = main({'accel_lamb':param_val})
+        s0, S0, S_final, final_cost, nit, all_final_costs = main({'accel_lamb':param_val})
 
         ## then save results ##
         # if file does not exist then make header
@@ -25,7 +25,7 @@ def test_params():
 
         # write the following values to file: date, time, git hash, final cost, number of iterations,
         # s0, S0, S_final, p(arams)
-        out = [sha, final_cost, nit]
+        out = [sha, final_cost, nit, all_final_costs[0], all_final_costs[1]]
         out += p.get_global_params() + list(s0) + list(S0) + list(S_final)
 
         with open(filename, 'a') as f:
@@ -59,7 +59,7 @@ def make_header():
     # make a dummy param dict just to get keys
     p_dummy = p.Params()
     param_names = list(p_dummy.default_params.keys())
-    out_names = ['git hash', 'final cost', 'iterations']
+    out_names = ['git hash', 'final cost', 'iterations', 'accel costs', 'task costs']
     out_names += param_names + s0_names + S0_names + S_final_names
 
     #pdb.set_trace()
