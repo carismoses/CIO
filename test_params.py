@@ -37,7 +37,6 @@ def test_params():
                 f.close()
 
 def make_header():
-    s0_names = []
     x = 'x'
     y = 'y'
     po = '_pose_'
@@ -47,6 +46,7 @@ def make_header():
     c = '_c'
     th = 'th'
 
+    s_names = []
     for obj_num in range(p.num_objs):
         on = 'obj_' + str(obj_num)
         s_names += [on+po+x, on+po+y, on+po+th, on+v+x, on+v+y, on+v+th]
@@ -55,13 +55,13 @@ def make_header():
         s_names += [cn+f+x, cn+f+y, cn+ro+x, cn+ro+y, cn+c]
 
     s0_names = []
-    for i in range(s_names):
-        s0_names += s_names + '_s0'
+    for i in range(len(s_names)):
+        s0_names += [s_names[i] + '_K=0']
 
     S_final_names = []
     for k in range(p.K):
         for j in range(len(s_names)):
-            S_final_names += s0_names + '_K=' + str(k)
+            S_final_names += [s0_names[j] + '_K=' + str(k+1)]
 
     # make a dummy param dict just to get keys
     p_dummy = p.Params()
