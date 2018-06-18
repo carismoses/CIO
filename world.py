@@ -183,7 +183,6 @@ class Rectangle(Object):
     # return the closest projected point out of all rect surfaces
     # use a softmin instead of a hard min to make function smooth
     def project_point(self, point):
-        pdb.set_trace()
         k = 1.e4
         num_sides = len(self.lines)
         p_nearest = np.zeros((num_sides,2))
