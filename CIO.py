@@ -140,6 +140,7 @@ def L_accel(s):
 
 #### MAIN OBJECTIVE FUNCTION ####
 def L(S, s0, objects, goal, phase_weights=None, phase=None):
+    global accels, tasks
     # augment by calculating the accelerations from the velocities
     # interpolate all of the decision vars to get a finer trajcetory disretization
     S_aug = augment_s(s0, S)
@@ -162,19 +163,19 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
             wci, wphys, wtask = 1.0, 1.0, 1.0
         else:
             wci, wphys, wtask = phase_weights
-        ci = wci*L_CI(s_aug_t, t, objects, world_traj)
+        ci = L_CI(s_aug_t, t, objects, world_traj)
         #kinem = L_kinematics(s_aug_t, objects)
-        phys = wphys*L_physics(s_aug_t, objects)
+        phys = L_physics(s_aug_t, objects)
         #cones = L_cone(s_aug_t)
         #cont = L_contact(s_aug_t)
         #vels = L_vels(s_aug_t, s_tm1)
         accel = L_accel(s_aug_t)
-        task = wtask*(L_task(s_aug_t, goal, t) + accel)
-        cost = task#ci + phys + task# + ci #vels + ci #+ kinem + cones + cont
+        task = L_task(s_aug_t, goal, t)
+        cost = wtask*(task + accel) + wci*ci + wphys*phys #vels + ci #+ kinem + cones + cont
 
-        #cis += ci
+        cis += ci
         #kinems += kinem
-        #physs += phys
+        physs += phys
         #coness += cones
         #conts += cont
         #velss += vels
@@ -182,17 +183,15 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
         tasks += task
         tot_cost += cost
 
-    #print("cis:             ", cis)
+    print("cis:             ", cis)
     #print("kinematics:     ", kinems)
-    #print("physics:        ", physs)
+    print("physics:        ", physs)
     #print("cone:           ", coness)
     #print("contact forces: ", conts)
     #print("velocities:     ", velss)
-    '''
     print("accels:     ", accels)
     print("task:           ", tasks)
     print("TOTAL: ", tot_cost)
-    '''
     return tot_cost
 
 #### MAIN FUNCTION ####
@@ -207,7 +206,7 @@ def CIO(goal, objects, s0, S0):
     #pdb.set_trace()
     bounds = get_bounds()
 
-    all_phase_weights =  [(0.,0.,1.), (1.,0.1, 1.0)] #, (1.0, 1.0, 1.0)] # (Lci, Lphys, Ltask)
+    all_phase_weights =  [(0.,0.,1.),]# (1.,0.1, 1.0)] #, (1.0, 1.0, 1.0)] # (Lci, Lphys, Ltask)
     x = S0
     for phase in range(len(all_phase_weights)):
         phase_weights = all_phase_weights[phase]
@@ -218,7 +217,7 @@ def CIO(goal, objects, s0, S0):
 
         print_result(x, s0)
         print("Final cost: ", final_cost)
-    return x, nit, final_cost
+    return x, nit, final_cost, [accels, tasks]
 
 def print_result(x, s0):
     # augement the output
