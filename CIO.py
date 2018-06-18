@@ -34,6 +34,7 @@ def L_CI(s, t, objects, world_traj):
                 + np.linalg.norm(e_O_dot[j,:])**2 + np.linalg.norm(e_H_dot)**2)
     #return ci_lamb*cost
     return cost
+
 # includes 1) limits on finger and arm joint angles (doesn't apply)
 #          2) distance from fingertips to palms limit (doesn't apply)
 #          3) TODO: collisions between fingers
@@ -114,11 +115,6 @@ def L_contact(s):
     cost = cont_lamb*term
     return cost
 
-def L_vels(s, s_tm1):
-    # penalize differences between poses and velocities
-    cost = vel_lamb*sum((get_object_vel(s) - (get_object_pos(s) - get_object_pos(s_tm1))/p.delT)**2)
-    return cost
-
 def L_task(s, goal, t):
     # l constraint: get object to desired pos
     I = 1 if t == (p.T_steps-1) else 0
@@ -147,7 +143,7 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
 
     world_traj = WorldTraj(s0, S_aug, objects)
     tot_cost = 0.0
-    cis, kinems, physs, coness, conts, velss, tasks, accels = \
+    cis, kinems, physs, coness, conts, tasks, accels = \
                             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
     for t in range(1,p.T_steps):
@@ -168,17 +164,15 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
         phys = L_physics(s_aug_t, objects)
         #cones = L_cone(s_aug_t)
         #cont = L_contact(s_aug_t)
-        #vels = L_vels(s_aug_t, s_tm1)
         accel = L_accel(s_aug_t)
         task = L_task(s_aug_t, goal, t)
-        cost = wtask*(task + accel) + wci*ci + wphys*phys #vels + ci #+ kinem + cones + cont
+        cost = wtask*(task + accel) + wci*ci + wphys*phys + ci #+ kinem + cones + cont
 
         cis += ci
         #kinems += kinem
         physs += phys
         #coness += cones
         #conts += cont
-        #velss += vels
         accels += accel
         tasks += task
         tot_cost += cost
@@ -188,7 +182,6 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
     print("physics:        ", physs)
     #print("cone:           ", coness)
     #print("contact forces: ", conts)
-    #print("velocities:     ", velss)
     print("accels:     ", accels)
     print("task:           ", tasks)
     print("TOTAL: ", tot_cost)
@@ -206,7 +199,7 @@ def CIO(goal, objects, s0, S0):
     #pdb.set_trace()
     bounds = get_bounds()
 
-    all_phase_weights =  [(0.,0.,1.),]# (1.,0.1, 1.0)] #, (1.0, 1.0, 1.0)] # (Lci, Lphys, Ltask)
+    all_phase_weights =  [(0.,0.,1.), (1.,0.1, 1.0)] #, (1.0, 1.0, 1.0)] # (Lci, Lphys, Ltask)
     x = S0
     for phase in range(len(all_phase_weights)):
         phase_weights = all_phase_weights[phase]
