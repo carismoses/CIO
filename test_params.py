@@ -6,14 +6,14 @@ from datetime import datetime, time
 import params as p
 import pdb
 # outer loop to call CIO's main function with different params to test
-accel_lamb_test_params = [1.e-15, 1.e-10, 1.e-5, 1.e-3, 1.e-1, 1., 1.e1]
+accel_lamb_test_params = [1.e-5]
 
 date_time = datetime.now().strftime("%Y-%m-%d") + '_' + datetime.now().strftime("%H%M%S")
 filename = '/Users/caris/CIO/output_files/' + date_time + '_accel_lambs.csv'
 
 def test_params():
     for param_val in accel_lamb_test_params:
-        s0, S0, S_final, final_cost, nit, all_final_costs = main({'accel_lamb':param_val})
+        phase_info = main({'accel_lamb':param_val})
 
         ## then save results ##
         # if file does not exist then make header
@@ -23,16 +23,18 @@ def test_params():
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
 
-        # write the following values to file: date, time, git hash, final cost, number of iterations,
-        # s0, S0, S_final, p(arams)
-        out = [sha, final_cost, nit, all_final_costs[0], all_final_costs[1]]
-        out += p.get_global_params() + list(s0) + list(S0) + list(S_final)
+        # write the following values to file: git hash, phase, final cost,
+        # number of iterations, sub cost info,p(arams),  s0, S0, S_final
+        for phase in phase_info.keys():
+            s0, S0, S_final, final_cost, nit, all_final_costs = phase_info[phase]
+            out = [sha, phase, final_cost, nit] + all_final_costs + \
+                    p.get_global_params() + list(s0) + list(S0) + list(S_final)
 
-        with open(filename, 'a') as f:
-            writer  = csv.writer(f, lineterminator='\n')
-            #for val in out:
-            writer.writerow(out)
-            f.close()
+            with open(filename, 'a') as f:
+                writer  = csv.writer(f, lineterminator='\n')
+                #for val in out:
+                writer.writerow(out)
+                f.close()
 
 def make_header():
     s0_names = []
@@ -59,7 +61,8 @@ def make_header():
     # make a dummy param dict just to get keys
     p_dummy = p.Params()
     param_names = list(p_dummy.default_params.keys())
-    out_names = ['git hash', 'final cost', 'iterations', 'accel costs', 'task costs']
+    out_names = ['git hash', 'phase', 'final cost', 'iterations', 'ci_costs', 'kinem_costs', \
+                    'phys_costs', 'cones_costs', 'cont_costs', 'task_costs', 'accel_costs']
     out_names += param_names + s0_names + S0_names + S_final_names
 
     #pdb.set_trace()
