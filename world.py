@@ -21,12 +21,14 @@ class WorldTraj(object):
             else:
                 object.step(self.S,t)
 
+    # e_O is the shortest distance between roj and the object
+    # e_H is the shortest distance between roj and the contact surfaces
     def calc_e(self, s, t, objects):
         _, box, _, _ = objects
         o = box.pose
 
         # get ro: roj in world frame
-        fj, roj, _ = get_contact_info(s)
+        _, roj, _ = get_contact_info(s)
         rj = roj + np.tile(o, (3, 1))
 
         # get pi_j: project rj onto all contact surfaces
@@ -123,6 +125,7 @@ class Line(Object):
         return a,b,c
 
     # project a given point onto this line (or endpoint)
+    # TODO: smooth out endpoints?
     def project_point(self, point):
         a,b,c = self.line_eqn()
         n = b*point[0] - a*point[1]
@@ -177,16 +180,21 @@ class Rectangle(Object):
                 length = self.height
         return lines
 
-    # return the closest projected points out of all rect surfaces
+    # return the closest projected point out of all rect surfaces
+    # use a softmin instead of a hard min to make function smooth
     def project_point(self, point):
-        shortest_dist = float("inf")
-        closest_point = None
-        for line in self.lines:
-            proj_point = line.project_point(point)
-            dist = get_dist(point, proj_point)
-            if dist < shortest_dist:
-                shortest_dist = dist
-                closest_point = point
+        pdb.set_trace()
+        k = 1.e4
+        num_sides = len(self.lines)
+        p_nearest = np.zeros((num_sides,2))
+        for j in range(num_sides):
+            p_nearest[j,:] = self.lines[j].project_point(point)
+        p_mat = np.tile(point.T, (num_sides, 1))
+        ones_vec = np.ones(num_sides)
+        nu = np.divide(ones_vec, ones_vec + np.linalg.norm(p_mat-p_nearest,axis=1)**2*k)
+        nu = nu/sum(nu)
+        nu = np.tile(nu, (2,1)).T
+        closest_point = sum(np.multiply(nu,p_nearest))
         return closest_point
 
 #### geometric helper functions ####
