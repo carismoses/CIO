@@ -201,17 +201,19 @@ def CIO(goal, objects, s0, S0):
 
     all_phase_weights =  [(0.,0.,1.), (1.,0.1, 1.0)] #, (1.0, 1.0, 1.0)] # (Lci, Lphys, Ltask)
     phase_info = {}
-    x = S0
+    x_init = S0
     for phase in range(len(all_phase_weights)):
         phase_weights = all_phase_weights[phase]
-        res = minimize(fun=L, x0=x, args=(s0, objects, goal, phase_weights, phase), method='L-BFGS-B', bounds=bounds)
-        x = res['x']
+        res = minimize(fun=L, x0=x_init, args=(s0, objects, goal, phase_weights, phase), method='L-BFGS-B', bounds=bounds)
+        x_final = res['x']
         nit = res['nit']
         final_cost = res['fun']
 
-        print_result(x, s0)
+        print_result(x_final, s0)
         print("Final cost: ", final_cost)
-        phase_info[phase] = [x, nit, final_cost, cis, kinems, physs, coness, conts, tasks, accels]
+        all_final_costs = [cis, kinems, physs, coness, conts, tasks, accels]
+        phase_info[phase] = x_init, S0, x_final, final_cost, nit, all_final_costs
+        x_init = x_final
     return phase_info
 
 def print_result(x, s0):
