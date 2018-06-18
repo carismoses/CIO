@@ -12,6 +12,7 @@ gravity: gravity
 mu: friction coefficient
 
 accel_lamb: coefficient for acceleration cost
+cont_lamb: coefficient for small contact forces cost
 
 the rest are derived:
 steps_per_phase
@@ -27,7 +28,8 @@ class Params(object):
     def __init__(self, test_params = {}, num_moveable_objects = 3):
         self.default_params = {'K': 5, 'delT': 0.1, 'delT_phase': 0.5, 'N': 3, \
                                 'mass': 1.0, 'gravity': 10.0, 'mu': 0.1, \
-                                'accel_lamb': 1.e-15, 'num_objs': num_moveable_objects}
+                                'accel_lamb': 1.e-15, 'cont_lamb': 1.e0, \
+                                'num_objs': num_moveable_objects}
         self.test_params = test_params
         self.set_test_params()
         self.set_default_params()
@@ -62,13 +64,11 @@ class Params(object):
         # objective function weights
         #self.ci_lamb = 1.0       # contact invariance (have to be touching object to activate contact force)
         #self.kin_lamb = .1       # object collisisions
-        #self.phys_lamb = 10.0    # physics have to make sense
         #self.cone_lamb = 1.0     # contact force in friction cone
-        #self.cont_lamb = 1.0     # discourage large contact forces
         #self.vel_lamb = 1.0      # velocities have to match change in poses
 
 def set_global_params(p):
-    global K, delT, delT_phase, N, mass, gravity, mu, accel_lamb, steps_per_phase
+    global K, delT, delT_phase, N, mass, gravity, mu, accel_lamb, cont_lamb, steps_per_phase
     global T_steps, T_final, len_s, len_s_aug, len_S, len_S_aug, num_objs
     K = p.K
     delT = p.delT
@@ -78,6 +78,7 @@ def set_global_params(p):
     gravity = p.gravity
     mu = p.mu
     accel_lamb = p.accel_lamb
+    cont_lamb = p.cont_lamb
     num_objs = p.num_objs
     # derived
     steps_per_phase = p.steps_per_phase
@@ -90,7 +91,7 @@ def set_global_params(p):
 
 # NOT derived ones... don't need to store those
 def get_global_params():
-    return [K, delT, delT_phase, N, mass, gravity, mu, accel_lamb, num_objs]
+    return [K, delT, delT_phase, N, mass, gravity, mu, accel_lamb, cont_lamb, num_objs]
 
 # define global variables which will be used
 K = None
@@ -101,6 +102,7 @@ mass = None
 gravity = None
 mu = None
 accel_lamb = None
+cont_lamb = None
 num_objs = None
 # derived
 steps_per_phase = None

@@ -32,7 +32,6 @@ def L_CI(s, t, objects, world_traj):
     for j in range(p.N):
         cost += cj[j]*(np.linalg.norm(e_O[j,:])**2 + np.linalg.norm(e_H[j,:])**2 \
                 + np.linalg.norm(e_O_dot[j,:])**2 + np.linalg.norm(e_H_dot)**2)
-    #return ci_lamb*cost
     return cost
 
 # includes 1) limits on finger and arm joint angles (doesn't apply)
@@ -81,7 +80,6 @@ def L_physics(s, objects):
     # calc change in angular momentum
     l_dot = I*oa[2]
 
-    #cost = phys_lamb*(np.linalg.norm(f_tot - p_dot)**2 + np.linalg.norm(m_tot - l_dot)**2)
     cost = np.linalg.norm(f_tot - p_dot)**2 + np.linalg.norm(m_tot - l_dot)**2
     return cost
 
@@ -92,6 +90,8 @@ def L_cone(s):
     # get contact surface angles
     angles = np.zeros((p.N))
     for j in range(p.N):
+        # TODO: this only works currently because all contact surfaces are lines...
+        # will need to change if have different shaped contact surfaces
         angles[j] = contact_objects[j].angle
     # get unit normal to contact surfaces at pi_j using surface line
     nj = get_normals(angles)
@@ -108,11 +108,11 @@ def L_cone(s):
 
 def L_contact(s):
     # discourage large contact forces
-    fj, roj, cj = get_contact_info(s)
+    fj, _, _ = get_contact_info(s)
     cost = 0.
     for j in range(p.N):
         cost += np.linalg.norm(fj[j])**2
-    cost = cont_lamb*term
+    cost = p.cont_lamb*cost
     return cost
 
 def L_task(s, goal, t):
@@ -163,7 +163,7 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
         kinem = 0.#L_kinematics(s_aug_t, objects)
         phys = L_physics(s_aug_t, objects)
         cones = 0.#L_cone(s_aug_t)
-        cont = 0.#L_contact(s_aug_t)
+        cont = L_contact(s_aug_t)
         accel = L_accel(s_aug_t)
         task = L_task(s_aug_t, goal, t)
         cost = wtask*(task + accel) + wci*ci + wphys*(phys + kinem + cones + cont)
@@ -177,12 +177,12 @@ def L(S, s0, objects, goal, phase_weights=None, phase=None):
         tasks += task
         tot_cost += cost
 
-    print("cis:             ", cis)
+    print("cis:            ", cis)
     print("kinematics:     ", kinems)
     print("physics:        ", physs)
     print("cone:           ", coness)
     print("contact forces: ", conts)
-    print("accels:     ", accels)
+    print("accels:         ", accels)
     print("task:           ", tasks)
     print("TOTAL: ", tot_cost)
     return tot_cost
