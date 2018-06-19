@@ -37,6 +37,13 @@ def init_vars(objects):
     S0 = np.zeros(p.len_S)
     for k in range(p.K):
         S0[k*p.len_s:k*p.len_s+p.len_s] = s0
+
+    # perturb all vars by gaussian noise
+    mean = 0.
+    var = 10.e-2
+    for j in range(len(S0)):
+        S0[j] += np.random.normal(mean, var)
+
     return s0, S0
 
 #### PARAMETERS #### TODO move them here
