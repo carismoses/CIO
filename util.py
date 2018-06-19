@@ -192,10 +192,10 @@ def augment_s(s0, S):
         fj_right, roj_right, cj_right = get_contact_info(s_right)
 
         # interpolate the contact forces (linear)
-        fjs = linspace_matrices(fj_left, fj_right, p.steps_per_phase)
+        fjs = linspace_matrices(fj_left, fj_right, p.steps_per_phase+1)
 
         # interpolate the contact poses (linear)
-        rojs = linspace_matrices(roj_left, roj_right, p.steps_per_phase)
+        rojs = linspace_matrices(roj_left, roj_right, p.steps_per_phase+1)
 
         for ph in range(p.steps_per_phase):
             t = k*p.steps_per_phase + ph
@@ -205,10 +205,10 @@ def augment_s(s0, S):
             s_aug = set_contact(cj_right, s_aug)
 
             # interpolate contact forces (linear)
-            s_aug = set_fj(fjs[ph,:,:], s_aug)
+            s_aug = set_fj(fjs[ph+1,:,:], s_aug)
 
             # interpolate contact poses (linear)
-            s_aug = set_roj(rojs[ph,:,:], s_aug)
+            s_aug = set_roj(rojs[ph+1,:,:], s_aug)
             S_aug = set_s(S_aug, s_aug, t)
 
     return S_aug
