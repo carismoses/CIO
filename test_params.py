@@ -5,28 +5,32 @@ import os
 from datetime import datetime, time
 import params as p
 import pdb
+import sys
+
 # outer loop to call CIO's main function with different params to test
 accel_lamb_test_params = [1.e-5]
 
 date_time = datetime.now().strftime("%Y-%m-%d") + '_' + datetime.now().strftime("%H%M%S")
-filename = '/Users/caris/CIO/output_files/' + date_time + '_accel_lambs.csv'
+fn_prefix = '/Users/caris/CIO/output_files/'
+fn_suff = '_accel_lambs.csv'
 
 def test_params():
+    filename = fn_prefix + date_time + fn_suff
     for param_val in accel_lamb_test_params:
         phase_info = main({'accel_lamb':param_val})
 
         ## then save results ##
         # if file does not exist then make header
         if not os.path.isfile(filename):
-            make_header()
+            make_header(filename)
 
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
 
         # write the following values to file: git hash, phase, final cost,
-        # number of iterations, sub cost info,p(arams),  s0, S0, S_final
+        # number of iterations, sub cost info,p(arams),  s0, S_final
         for phase in phase_info.keys():
-            s0, S0, S_final, final_cost, nit, all_final_costs = phase_info[phase]
+            s0, S_final, final_cost, nit, all_final_costs = phase_info[phase]
             out = [sha, phase, final_cost, nit] + all_final_costs + \
                     p.get_global_params() + list(s0) + list(S_final)
 
@@ -36,7 +40,7 @@ def test_params():
                 writer.writerow(out)
                 f.close()
 
-def make_header():
+def make_header(filename):
     x = 'x'
     y = 'y'
     po = '_pose_'
@@ -76,5 +80,36 @@ def make_header():
         writer.writerow(out_names)
         f.close()
 
+def pretty_print(date_time):
+    filename = fn_prefix + str(date_time) + fn_suff
+    if not os.path.isfile(filename):
+        print('No file with this timestamp!')
+        return
+
+    with open(filename, 'r') as f:
+        reader = csv.reader(f, delimiter=',')
+        len_s = 33
+        num_ps = 20
+        row_num = 0
+        for row in reader:
+            if row_num == 0:
+                header = row
+            else:
+                print('---------------------------------------------------------')
+                prologue = row[:num_ps]
+                K = prologue[11]
+                for i in range(num_ps):
+                    print(header[i] + ': ' + str(prologue[i]))
+                for v in range(len_s):
+                    print(header[num_ps+1+v][:-4] + ':')
+                    for k in range(int(K)+1):
+                        print('   ' + str(row[num_ps+1+v]))
+            row_num += 1
+
 if __name__ == '__main__':
-    test_params()
+    args = sys.argv
+    if len(args) == 1:
+        test_params()
+    else:
+        date_time = args[1]
+        pretty_print(date_time)
