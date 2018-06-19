@@ -137,7 +137,7 @@ def L_accel(s):
     return cost
 
 #### MAIN OBJECTIVE FUNCTION ####
-def L(S, s0, objects, goal, phase_weights=None, phase=None):
+def L(S, s0, objects, goal, phase_weights=None):
     global cis, kinems, physs, coness, conts, tasks, accels
     # augment by calculating the accelerations from the velocities
     # interpolate all of the decision vars to get a finer trajcetory disretization
@@ -188,7 +188,7 @@ def CIO(goal, objects, s0, S0):
     """
     # FOR TESTING A SINGLE traj
     pdb.set_trace()
-    x = L(S0, s0, objects, goal)
+    x = L(S0, s0, objects, goal, phase_weights=[0.,0.,1.])
     print(x)
     pdb.set_trace()
     """
@@ -200,7 +200,7 @@ def CIO(goal, objects, s0, S0):
     x_init = S0
     for phase in range(len(all_phase_weights)):
         phase_weights = all_phase_weights[phase]
-        res = minimize(fun=L, x0=x_init, args=(s0, objects, goal, phase_weights, phase), method='L-BFGS-B', bounds=bounds)
+        res = minimize(fun=L, x0=x_init, args=(s0, objects, goal, phase_weights), method='L-BFGS-B', bounds=bounds)
         x_final = res['x']
         nit = res['nit']
         final_cost = res['fun']
