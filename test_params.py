@@ -103,7 +103,7 @@ def pretty_print(date_time):
                 for v in range(len_s):
                     print(header[num_ps+1+v][:-4] + ':')
                     for k in range(int(K)+1):
-                        print('   ' + str(row[num_ps+1+v]))
+                        print('   ' + str(row[num_ps + 1 + (len_s*k) + v]))
             row_num += 1
 
 if __name__ == '__main__':
