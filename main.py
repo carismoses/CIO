@@ -27,9 +27,9 @@ def init_vars(objects):
     # j = 1 gripper 2 contact
     # j = 2 ground contact
     # rO is in object (box) frame
-    con0 = [0.0, 0.0,  0.0, 15.0, 0.0] # gripper1
-    con1 = [0.0, 0.0, 10.0, 15.0, 0.0] # gripper2
-    con2 = [0.0, 0.0,  5.0, 0.0, 1.0] # ground
+    con0 = [0.0, 0.0,  0.0, 15.0, 0.5] # gripper1
+    con1 = [0.0, 0.0, 10.0, 15.0, 0.5] # gripper2
+    con2 = [0.0, 0.0,  5.0, 0.0, 0.5] # ground
 
     s0[18:p.len_s] = (con0 + con1 + con2)
 
