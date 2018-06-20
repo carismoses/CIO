@@ -137,7 +137,7 @@ def L_accel(s):
     return cost
 
 #### MAIN OBJECTIVE FUNCTION ####
-def L(S, s0, objects, goal, phase_weights=None):
+def L(S, s0, objects, goal, phase_weights):
     global cis, kinems, physs, coness, conts, tasks, accels
     # augment by calculating the accelerations from the velocities
     # interpolate all of the decision vars to get a finer trajcetory disretization
@@ -157,10 +157,8 @@ def L(S, s0, objects, goal, phase_weights=None):
         world_traj.step(t)
         s_aug_t = get_s(S_aug,t)
 
-        if phase_weights == None:
-            wci, wphys, wtask = 1.0, 1.0, 1.0
-        else:
-            wci, wphys, wtask = phase_weights
+        wci, wphys, wtask = phase_weights
+
         ci = L_CI(s_aug_t, t, objects, world_traj)
         kinem = 0.#L_kinematics(s_aug_t, objects)
         phys = L_physics(s_aug_t, objects)
@@ -188,18 +186,19 @@ def CIO(goal, objects, s0, S0):
     """
     # FOR TESTING A SINGLE traj
     pdb.set_trace()
-    x = L(S0, s0, objects, goal, phase_weights=[0.,0.,1.])
+    x = L(S0, s0, objects, goal)
     print(x)
     pdb.set_trace()
     """
     #pdb.set_trace()
     bounds = get_bounds()
 
-    all_phase_weights =  [(0.,0.,1.), (1.,0.1, 1.0)] #, (1.0, 1.0, 1.0)] # (Lci, Lphys, Ltask)
-    phase_info = {}
+    ret_info = {}
     x_init = S0
-    for phase in range(len(all_phase_weights)):
-        phase_weights = all_phase_weights[phase]
+    if p.phase_weights == []:
+        p.phase_weights = [(1.,1.,1.),]
+    for phase in range(p.start_phase, len(p.phase_weights)):
+        phase_weights = p.phase_weights[phase]
         res = minimize(fun=L, x0=x_init, args=(s0, objects, goal, phase_weights), method='L-BFGS-B', bounds=bounds)
         x_final = res['x']
         nit = res['nit']
@@ -208,9 +207,9 @@ def CIO(goal, objects, s0, S0):
         print_result(x_final, s0)
         print("Final cost: ", final_cost)
         all_final_costs = [cis, kinems, physs, coness, conts, tasks, accels]
-        phase_info[phase] = s0, x_final, final_cost, nit, all_final_costs
+        ret_info[phase] = s0, x_final, final_cost, nit, all_final_costs
         x_init = x_final
-    return phase_info
+    return ret_info
 
 def print_step(tot_cost):
     print("cis:            ", cis)

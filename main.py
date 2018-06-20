@@ -95,7 +95,7 @@ def make_test_traj2(s0, S0, goal, objects):
     return s0, S0
 
 #### MAIN FUNCTION ####
-def main(test_params={}):
+def main(test_params={}, s0=None, S0=None):
     #pdb.set_trace()
 
     # initialize objects
@@ -107,7 +107,8 @@ def main(test_params={}):
     p.set_global_params(paramClass)
 
     # initialize decision variables
-    s0, S0 = init_vars(objects)
+    if s0 == None:
+        s0, S0 = init_vars(objects)
 
     # potentially update with a test trajcetory
     if testing1:
