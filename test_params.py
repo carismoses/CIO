@@ -20,12 +20,13 @@ fn_suff = '.csv'
 
 # this is for running an optimization starting from the results of a previous phase
 # start_phase is the phase that you would like the start the optimization from
-# file_date_time is the date-time stamp from the file to get initial vars from
+# file_name is the date-time stamp from the file to get initial vars from
 # file_line_num is the line number you would like to load the initial vars from
-def restart(start_phase, file_date_time, file_line_num):
-    old_filename = fn_prefix + file_date_time + fn_suff
+def restart(start_phase, file_name, file_line_num):
+    old_filename = fn_prefix + file_name + fn_suff
     if not os.path.isfile(old_filename):
         print('This file does not exist!')
+        return
 
     # read in old file to get starting information from
     with open(old_filename, 'r') as f:
@@ -114,14 +115,13 @@ def make_header(filename):
                     'phys_costs', 'cones_costs', 'cont_costs', 'task_costs', 'accel_costs']
     out_names += param_names + s0_names + S_final_names
 
-    #pdb.set_trace()
     with open(filename, 'a') as f:
         writer  = csv.writer(f, lineterminator='\n')
         writer.writerow(out_names)
         f.close()
 
-def pretty_print(date_time):
-    filename = fn_prefix + str(date_time) + fn_suff
+def pretty_print(file_name):
+    filename = fn_prefix + str(file_name) + fn_suff
     if not os.path.isfile(filename):
         print('No file with this timestamp!')
         return
@@ -149,8 +149,8 @@ if __name__ == '__main__':
     if len(args) == 1:
         test_params()
     elif args[1] == 'restart':
-        start_phase, file_date_time, file_line_num = args[2:]
-        restart(int(start_phase), file_date_time, int(file_line_num))
+        start_phase, file_name, file_line_num = args[2:]
+        restart(int(start_phase), file_name, int(file_line_num))
     elif args[1] == 'pp':
-        date_time = args[2]
-        pretty_print(date_time)
+        file_name = args[2]
+        pretty_print(file_name)
