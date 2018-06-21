@@ -10,10 +10,11 @@ import time
 
 # outer loop to call CIO's main function with different params to test
 accel_lamb_test_params = [1.e-5,]
-phase_weights_test = [[(0.,0.,1.), (0.0, 1.0, 1.0)],]#\ ci, phys, task
-                      #[(0.,0.,1.), (1.0, 0.1, 1.0)],\
+# ci, phys, task
+phase_weights_test = [[(0.,0.,1.), (0.0, 1.0, 1.0)],]#\
+                      #[(0.,0.,1.), (0.0, 1.0, 1.5)]]
                       #[(0.,0.,1.), (0.1, 1.0, 1.0)]]
-cont_lamb_test_params = [1.e-10, 1.e-8, 1.e-5, 1.e-3]
+cont_lamb_test_params = [1.e-5,]#[1.e-10, 1.e-8, 1.e-5, 1.e-3]
 
 # TODO: unhard code these vars
 len_s = 33
