@@ -77,7 +77,6 @@ def write_to_file(ret_info, filename):
                 p.get_global_params() + list(s0) + list(S_final)
 
         write(filename, out)
-        pdb.set_trace()
 
 def test_params(s0=None, S0=None, start_phase=0, filename=None):
     if filename == None:
