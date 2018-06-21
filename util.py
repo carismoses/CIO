@@ -318,3 +318,12 @@ def interpolate_poses(s0, S, S_aug, set_funcs, get_funcs):
         S_aug = set_s(S_aug, s, i)
 
     return S_aug
+
+def add_noise(vec):
+    # perturb all vars by gaussian noise
+    mean = 0.
+    var = 10.e-2
+    for j in range(len(vec)):
+        vec[j] += np.random.normal(mean, var)
+
+    return vec
