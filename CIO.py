@@ -13,8 +13,8 @@ verbose = False
 
 #### SURFACE NORMALS ####
 def get_normals(angles):
-    nj = np.zeros((N, 2))
-    for j in range(N):
+    nj = np.zeros((p.N, 2))
+    for j in range(p.N):
         norm_angle = angles[j] + np.pi/2
         nj[j,:] = np.array([np.cos(norm_angle), np.sin(norm_angle)])
     return nj
@@ -85,9 +85,11 @@ def L_physics(s, objects):
     cost = np.linalg.norm(f_tot - p_dot)**2 + np.linalg.norm(m_tot - l_dot)**2
     return cost
 
-def L_cone(s):
+def L_cone(s, objects):
     # calc L_cone
     fj, roj, cj = get_contact_info(s)
+    ground, _, gripper1, gripper2 = objects
+    contact_objects = [gripper1, gripper2, ground]
     cost = 0.0
     # get contact surface angles
     angles = np.zeros((p.N))
@@ -105,7 +107,7 @@ def L_cone(s):
         else:
             angle = np.arccos(cosangle_num/cosangle_den)
         cost += max(angle - np.arctan(p.mu), 0)**2
-    return cone_lamb*cost
+    return cost
 
 def L_contact(s):
     # discourage large contact forces
@@ -161,7 +163,7 @@ def L(S, s0, objects, goal, phase_weights):
         ci = L_CI(s_aug_t, t, objects, world_traj)
         kinem = 0.#L_kinematics(s_aug_t, objects)
         phys = L_physics(s_aug_t, objects)
-        cones = L_cone(s_aug_t)
+        cones = L_cone(s_aug_t, objects)
         cont = L_contact(s_aug_t)
         accel = L_accel(s_aug_t)
         task = L_task(s_aug_t, goal, t)
