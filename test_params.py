@@ -8,8 +8,10 @@ import pdb
 import sys
 
 # outer loop to call CIO's main function with different params to test
-accel_lamb_test_params = [1.e-5]
-phase_weights = [(0.,0.,1.), (1.,0.1, 1.0)]  #, (1.0, 1.0, 1.0)] last phase
+accel_lamb_test_params = [1.e-5, 1.e-4]
+phase_weights_test = [[(0.,0.,1.), (1.0, 1.0, 1.0)],\
+                      [(0.,0.,1.), (1.0, 0.1, 1.0)],]#\
+                      #[(0.,0.,1.), (0.1, 1.0, 1.0)]]
 
 # TODO: unhard code these vars
 len_s = 33
@@ -22,8 +24,8 @@ fn_suff = '.csv'
 # start_phase is the phase that you would like the start the optimization from
 # file_name is the date-time stamp from the file to get initial vars from
 # file_line_num is the line number you would like to load the initial vars from
-def restart(start_phase, file_name, file_line_num):
-    old_filename = fn_prefix + file_name + fn_suff
+def restart(start_phase, old_file_name, file_line_num):
+    old_filename = fn_prefix + old_file_name + fn_suff
     if not os.path.isfile(old_filename):
         print('This file does not exist!')
         return
@@ -36,10 +38,25 @@ def restart(start_phase, file_name, file_line_num):
     # Run CIO from this point on
     start_vars = reader[file_line_num]
     s0, S0 = make_init_vars(start_vars)
-    ret_info = main({'phase_weights':phase_weights, 'start_phase':start_phase}, s0, S0)
 
-    # write results to new file
-    write_to_file(ret_info, old_filename, file_line_num)
+    # check for file compatibility (TODO: this is before you change for test
+    # params, so set params before this check, or check for compatibility after test params are set)
+    dummy_p = p.Params()
+    if len(S0)/len_s != dummy_p.K:
+        print('The file you are attempting to restart from has a different K value')
+        print('than the K you are currently trying to test')
+
+    # add the file the old file information
+    date_time = datetime.now().strftime("%Y-%m-%d") + '_' + datetime.now().strftime("%H%M")
+    filename = fn_prefix + date_time + fn_suff
+
+    with open(filename, 'a') as f:
+        writer  = csv.writer(f, lineterminator='\n')
+        writer.writerow(['Coming from file : ' + old_filename])
+        writer.writerow(['Coming from line number : ' + str(file_line_num)])
+        f.close()
+
+    test_params(s0, S0, start_phase, filename)
 
 # TODO: should also return parameters used to ensure that the same parameters are used in the restart
 def make_init_vars(init_vars):
@@ -47,21 +64,7 @@ def make_init_vars(init_vars):
     S0 = [float(i) for i in init_vars[num_ps+1+len_s:]]
     return s0, S0
 
-def write_to_file(ret_info, old_filename=None, start_line=None):
-    date_time = datetime.now().strftime("%Y-%m-%d") + '_' + datetime.now().strftime("%H%M")
-    filename = fn_prefix + date_time + fn_suff
-
-    # if from a restart, print the file name and line number it is starting from
-    if old_filename != None:
-        with open(filename, 'a') as f:
-            writer  = csv.writer(f, lineterminator='\n')
-            writer.writerow(['Coming from file : ' + old_filename])
-            writer.writerow(['Coming from line number : ' + str(start_line)])
-            f.close()
-
-    # make header
-    make_header(filename)
-
+def write_to_file(ret_info, filename):
     # write the following values to file: git hash, phase, final cost,
     # number of iterations, sub cost info,p(arams),  s0, S_final
     repo = git.Repo(search_parent_directories=True)
@@ -76,10 +79,18 @@ def write_to_file(ret_info, old_filename=None, start_line=None):
             writer.writerow(out)
             f.close()
 
-def test_params():
-    for param_val in accel_lamb_test_params:
-        ret_info = main({'accel_lamb':param_val, 'phase_weights':phase_weights})
-        write_to_file(ret_info)
+def test_params(s0=None, S0=None, start_phase=0, filename=None):
+    if filename != None:
+        date_time = datetime.now().strftime("%Y-%m-%d") + '_' + datetime.now().strftime("%H%M")
+        filename = fn_prefix + date_time + fn_suff
+
+    # make header
+    make_header(filename)
+
+    for accel_val in accel_lamb_test_params:
+        for phase_weights in phase_weights_test:
+            ret_info = main({'accel_lamb':accel_val, 'phase_weights':phase_weights, 'start_phase': start_phase},s0,S0)
+            write_to_file(ret_info, filename)
 
 def make_header(filename):
     x = 'x'
@@ -154,3 +165,5 @@ if __name__ == '__main__':
     elif args[1] == 'pp':
         file_name = args[2]
         pretty_print(file_name)
+    else:
+        print('Arguments are not valid')
