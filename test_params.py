@@ -20,6 +20,8 @@ num_ps = 21 # length of output vars to csv that are not part of s0 or Sfinal
 fn_prefix = '/Users/caris/CIO/output_files/'
 fn_suff = '.csv'
 
+p_dummy = p.Params()
+
 # this is for running an optimization starting from the results of a previous phase
 # start_phase is the phase that you would like the start the optimization from
 # file_name is the date-time stamp from the file to get initial vars from
@@ -41,8 +43,7 @@ def restart(start_phase, old_file_name, file_line_num):
 
     # check for file compatibility (TODO: this is before you change for test
     # params, so set params before this check, or check for compatibility after test params are set)
-    dummy_p = p.Params()
-    if len(S0)/len_s != dummy_p.K:
+    if len(S0)/len_s != p_dummy.K:
         print('The file you are attempting to restart from has a different K value')
         print('than the K you are currently trying to test')
 
@@ -103,10 +104,10 @@ def make_header(filename):
     th = 'th'
 
     s_names = []
-    for obj_num in range(p.num_objs):
+    for obj_num in range(p_dummy.num_objs):
         on = 'obj_' + str(obj_num)
         s_names += [on+po+x, on+po+y, on+po+th, on+v+x, on+v+y, on+v+th]
-    for j in range(p.N):
+    for j in range(p_dummy.N):
         cn = 'cont_' + str(j)
         s_names += [cn+f+x, cn+f+y, cn+ro+x, cn+ro+y, cn+c]
 
@@ -115,12 +116,11 @@ def make_header(filename):
         s0_names += [s_names[i] + '_K=0']
 
     S_final_names = []
-    for k in range(p.K):
+    for k in range(p_dummy.K):
         for j in range(len(s_names)):
             S_final_names += [s_names[j] + '_K=' + str(k+1)]
 
     # make a dummy param dict just to get keys
-    p_dummy = p.Params()
     param_names = list(p_dummy.default_params.keys())
     out_names = ['git hash', 'phase', 'final cost', 'iterations', 'ci_costs', 'kinem_costs', \
                     'phys_costs', 'cones_costs', 'cont_costs', 'task_costs', 'accel_costs']
