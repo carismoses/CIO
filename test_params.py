@@ -53,11 +53,8 @@ def restart(old_file_name, file_line_num):
     date_time = datetime.now().strftime("%Y-%m-%d") + '_' + datetime.now().strftime("%H%M")
     filename = fn_prefix + date_time + fn_suff
 
-    with open(filename, 'a') as f:
-        writer  = csv.writer(f, lineterminator='\n')
-        writer.writerow(['Coming from file : ' + old_filename])
-        writer.writerow(['Coming from line number : ' + str(file_line_num)])
-        f.close()
+    write(filename, ['Coming from file : ' + old_filename])
+    write(filename, ['Coming from line number : ' + str(file_line_num)])
 
     # this 1 should not be hard coded but the phase number is currently the 2nd number in the vars
     start_phase = int(start_vars[1]) + 1
@@ -79,10 +76,7 @@ def write_to_file(ret_info, filename):
         out = [sha, phase, final_cost, nit] + all_final_costs + \
                 p.get_global_params() + list(s0) + list(S_final)
 
-        with open(filename, 'a') as f:
-            writer  = csv.writer(f, lineterminator='\n')
-            writer.writerow(out)
-            f.close()
+        write(filename, out)
         pdb.set_trace()
 
 def test_params(s0=None, S0=None, start_phase=0, filename=None):
@@ -134,9 +128,12 @@ def make_header(filename):
                     'phys_costs', 'cones_costs', 'cont_costs', 'task_costs', 'accel_costs']
     out_names += param_names + s0_names + S_final_names
 
+    write(filename, out_names)
+
+def write(filename, out):
     with open(filename, 'a') as f:
         writer  = csv.writer(f, lineterminator='\n')
-        writer.writerow(out_names)
+        writer.writerow(out)
         f.close()
 
 def pretty_print(file_name):
