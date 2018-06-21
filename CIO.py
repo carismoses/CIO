@@ -98,14 +98,13 @@ def L_cone(s):
     # get unit normal to contact surfaces at pi_j using surface line
     nj = get_normals(angles)
     for j in range(p.N):
-        if cj[j] > 0.0: # TODO: fix.. don't think it's working..
-            cosangle_num = np.dot(fj[j], nj[j,:])
-            cosangle_den = np.dot(np.linalg.norm(fj[j]), np.linalg.norm(nj[j,:]))
-            if cosangle_den == 0.0: # TODO: is this correct?
-                angle = 0.0
-            else:
-                angle = np.arccos(cosangle_num/cosangle_den)
-            cost += max(angle - np.arctan(p.mu), 0)**2
+        cosangle_num = np.dot(fj[j], nj[j,:])
+        cosangle_den = np.dot(np.linalg.norm(fj[j]), np.linalg.norm(nj[j,:]))
+        if cosangle_den == 0.0: # TODO: is this correct?
+            angle = 0.0
+        else:
+            angle = np.arccos(cosangle_num/cosangle_den)
+        cost += max(angle - np.arctan(p.mu), 0)**2
     return cone_lamb*cost
 
 def L_contact(s):
@@ -162,7 +161,7 @@ def L(S, s0, objects, goal, phase_weights):
         ci = L_CI(s_aug_t, t, objects, world_traj)
         kinem = 0.#L_kinematics(s_aug_t, objects)
         phys = L_physics(s_aug_t, objects)
-        cones = 0.#L_cone(s_aug_t)
+        cones = L_cone(s_aug_t)
         cont = L_contact(s_aug_t)
         accel = L_accel(s_aug_t)
         task = L_task(s_aug_t, goal, t)
@@ -183,14 +182,12 @@ def L(S, s0, objects, goal, phase_weights):
 
 #### MAIN FUNCTION ####
 def CIO(goal, objects, s0, S0):
-    """
+    '''
     # FOR TESTING A SINGLE traj
-    pdb.set_trace()
-    x = L(S0, s0, objects, goal)
+    x = L(S0, s0, objects, goal, (1.,1.,1.))
     print(x)
-    pdb.set_trace()
-    """
-    #pdb.set_trace()
+    '''
+
     bounds = get_bounds()
 
     ret_info = {}
