@@ -6,12 +6,14 @@ from datetime import datetime, time
 import params as p
 import pdb
 import sys
+import time
 
 # outer loop to call CIO's main function with different params to test
-accel_lamb_test_params = [1.e-5, 1.e-4]
-phase_weights_test = [[(0.,0.,1.), (1.0, 1.0, 1.0)],\
-                      [(0.,0.,1.), (1.0, 0.1, 1.0)],]#\
+accel_lamb_test_params = [1.e-5,]
+phase_weights_test = [[(0.,0.,1.), (0.0, 1.0, 1.0)],]#\ ci, phys, task
+                      #[(0.,0.,1.), (1.0, 0.1, 1.0)],\
                       #[(0.,0.,1.), (0.1, 1.0, 1.0)]]
+cont_lamb_test_params = [1.e-10, 1.e-8, 1.e-5, 1.e-3]
 
 # TODO: unhard code these vars
 len_s = 33
@@ -26,7 +28,7 @@ p_dummy = p.Params()
 # start_phase is the phase that you would like the start the optimization from
 # file_name is the date-time stamp from the file to get initial vars from
 # file_line_num is the line number you would like to load the initial vars from
-def restart(start_phase, old_file_name, file_line_num):
+def restart(old_file_name, file_line_num):
     old_filename = fn_prefix + old_file_name + fn_suff
     if not os.path.isfile(old_filename):
         print('This file does not exist!')
@@ -57,6 +59,8 @@ def restart(start_phase, old_file_name, file_line_num):
         writer.writerow(['Coming from line number : ' + str(file_line_num)])
         f.close()
 
+    # this 1 should not be hard coded but the phase number is currently the 2nd number in the vars
+    start_phase = int(start_vars[1]) + 1
     test_params(s0, S0, start_phase, filename)
 
 # TODO: should also return parameters used to ensure that the same parameters are used in the restart
@@ -79,9 +83,10 @@ def write_to_file(ret_info, filename):
             writer  = csv.writer(f, lineterminator='\n')
             writer.writerow(out)
             f.close()
+        pdb.set_trace()
 
 def test_params(s0=None, S0=None, start_phase=0, filename=None):
-    if filename != None:
+    if filename == None:
         date_time = datetime.now().strftime("%Y-%m-%d") + '_' + datetime.now().strftime("%H%M")
         filename = fn_prefix + date_time + fn_suff
 
@@ -89,9 +94,12 @@ def test_params(s0=None, S0=None, start_phase=0, filename=None):
     make_header(filename)
 
     for accel_val in accel_lamb_test_params:
-        for phase_weights in phase_weights_test:
-            ret_info = main({'accel_lamb':accel_val, 'phase_weights':phase_weights, 'start_phase': start_phase},s0,S0)
-            write_to_file(ret_info, filename)
+        for cont_lamb in cont_lamb_test_params:
+            for phase_weights in phase_weights_test:
+                test_params = {'accel_lamb':accel_val, 'phase_weights':phase_weights, \
+                'start_phase': start_phase, 'cont_lamb': cont_lamb}
+                ret_info = main(test_params,s0,S0)
+                write_to_file(ret_info, filename)
 
 def make_header(filename):
     x = 'x'
@@ -156,12 +164,14 @@ def pretty_print(file_name):
             row_num += 1
 
 if __name__ == '__main__':
+    global start
+    start = time.time()
     args = sys.argv
     if len(args) == 1:
         test_params()
     elif args[1] == 'restart':
-        start_phase, file_name, file_line_num = args[2:]
-        restart(int(start_phase), file_name, int(file_line_num))
+        file_name, file_line_num = args[2:]
+        restart(file_name, int(file_line_num))
     elif args[1] == 'pp':
         file_name = args[2]
         pretty_print(file_name)
