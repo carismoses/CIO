@@ -7,6 +7,7 @@ from util import *
 
 testing1 = False
 testing2 = False
+testing_traj = False
 
 #### INITIALIZE DECISION VARIABLES ####
 def init_vars(objects):
@@ -88,6 +89,20 @@ def make_test_traj2(s0, S0, goal, objects):
             S0[(t-1)*p.len_s+l:(t-1)*len_s+r] = goal
     return s0, S0
 
+def make_test_traj_cones(s0, S0, goal, objects):
+    pdb.set_trace()
+    # gripper 1 force range (need to also vary the gripper 0 angle)
+    f_mag = 10
+    f_angles = np.linspace(0., 2*np.pi, p.K)
+    for t in range(0,p.K):
+        s = get_s(S0, t)
+        fj_old, _, _ = get_contact_info(s)
+        f_unit = np.array([np.cos(f_angles[t]), np.sin(f_angles[t])])
+        fj_old[0] = f_mag*f_unit
+        s_new = set_fj(fj_old, s)
+        S0 = set_s(S0, s_new, t)
+    return s0, S0
+
 #### MAIN FUNCTION ####
 def main(test_params={}, s0=None, S0=None):
     #pdb.set_trace()
@@ -109,6 +124,8 @@ def main(test_params={}, s0=None, S0=None):
         s0, S0 = make_test_traj(s0, S0, goal, objects)
     if testing2:
         s0, S0 = make_test_traj2(s0, S0, goal, objects)
+    if testing_traj:
+        s0, S0 = make_test_traj_cones(s0, S0, goal, objects)
 
     # run CIO
     phase_info = CIO(goal, objects, s0, S0)
