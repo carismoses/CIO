@@ -68,9 +68,9 @@ class Object(object):
                 self.angle = S[6*self.pose_index+2]
                 self.vel = S[6*self.pose_index+3:6*self.pose_index+7]
             else:
-                self.pose = S[6*self.pose_index+(t-1)*p.len_s:6*self.pose_index+(t-1)*p.len_s+2]
-                self.angle = S[6*self.pose_index+(t-1)*p.len_s+2]
-                self.vel = S[6*self.pose_index+(t-1)*p.len_s+3:6*self.pose_index+(t-1)*p.len_s+7]
+                self.pose = S[6*self.pose_index+(t-1)*p.len_s_aug:6*self.pose_index+(t-1)*p.len_s_aug+2]
+                self.angle = S[6*self.pose_index+(t-1)*p.len_s_aug+2]
+                self.vel = S[6*self.pose_index+(t-1)*p.len_s_aug+3:6*self.pose_index+(t-1)*p.len_s_aug+7]
 
     def check_collisions(self, col_object):
         pts = self.discretize()
