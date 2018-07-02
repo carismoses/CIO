@@ -87,7 +87,7 @@ def L_physics(s, objects):
 
 def L_cone(s, objects):
     # calc L_cone
-    fj, roj, cj = get_contact_info(s)
+    fj, _, _ = get_contact_info(s)
     ground, _, gripper1, gripper2 = objects
     contact_objects = [gripper1, gripper2, ground]
     cost = 0.0
@@ -107,7 +107,7 @@ def L_cone(s, objects):
         else:
             angle = np.arccos(cosangle_num/cosangle_den)
         cost += max(angle - np.arctan(p.mu), 0)**2
-    return cost
+    return p.cone_lamb*cost
 
 def L_contact(s):
     # discourage large contact forces
@@ -184,12 +184,14 @@ def L(S, s0, objects, goal, phase_weights):
 
 #### MAIN FUNCTION ####
 def CIO(goal, objects, s0, S0):
+    global iter
+
     '''
     # FOR TESTING A SINGLE traj
     x = L(S0, s0, objects, goal, (1.,1.,1.))
     print(x)
     '''
-
+    
     bounds = get_bounds()
 
     ret_info = {}
@@ -197,9 +199,10 @@ def CIO(goal, objects, s0, S0):
     if p.phase_weights == []:
         p.phase_weights = [(1.,1.,1.),]
     for phase in range(p.start_phase, len(p.phase_weights)):
+        iter = 0
         x_init = add_noise(x_init)
         phase_weights = p.phase_weights[phase]
-        res = minimize(fun=L, x0=x_init, args=(s0, objects, goal, phase_weights), method='L-BFGS-B', bounds=bounds)
+        res = minimize(fun=L, x0=x_init, args=(s0, objects, goal, phase_weights), method='L-BFGS-B', bounds=bounds, callback=callback)
         x_final = res['x']
         nit = res['nit']
         final_cost = res['fun']
@@ -210,6 +213,11 @@ def CIO(goal, objects, s0, S0):
         ret_info[phase] = s0, x_final, final_cost, nit, all_final_costs
         x_init = x_final
     return ret_info
+
+def callback(xk):
+    global iter
+    print(iter)
+    iter += 1
 
 def print_step(tot_cost):
     print("cis:            ", cis)
