@@ -13,6 +13,7 @@ mu: friction coefficient
 
 accel_lamb: coefficient for acceleration cost
 cont_lamb: coefficient for small contact forces cost
+cone_lamb: coefficient for forces to lie in the friction cone
 phase_weights: list of weights for the cost functions in this order(Lci, Lphys, Ltask)
 
 the rest are derived:
@@ -28,8 +29,9 @@ len_S_aug
 class Params(object):
     def __init__(self, test_params = {}, num_moveable_objects = 3):
         self.default_params = {'K': 5, 'delT': 0.1, 'delT_phase': 0.5, 'N': 3, \
-                                'mass': 1.0, 'gravity': 10.0, 'mu': 0.1, \
+                                'mass': 1.0, 'gravity': 10.0, 'mu': 0.3, \
                                 'accel_lamb': 1.e-15, 'cont_lamb': 1.e0, \
+                                'cone_lamb': 1.e0,\
                                 'phase_weights': [], 'num_objs': num_moveable_objects}
         self.test_params = test_params
         self.set_test_params()
@@ -69,7 +71,7 @@ class Params(object):
         #self.vel_lamb = 1.0      # velocities have to match change in poses
 
 def set_global_params(p):
-    global K, delT, delT_phase, N, mass, gravity, mu, accel_lamb, cont_lamb, phase_weights
+    global K, delT, delT_phase, N, mass, gravity, mu, accel_lamb, cont_lamb, cone_lamb, phase_weights
     global steps_per_phase, T_steps, T_final, len_s, len_s_aug, len_S, len_S_aug, num_objs, start_phase
     K = p.K
     delT = p.delT
@@ -80,6 +82,7 @@ def set_global_params(p):
     mu = p.mu
     accel_lamb = p.accel_lamb
     cont_lamb = p.cont_lamb
+    cone_lamb = p.cone_lamb
     phase_weights = p.phase_weights
     num_objs = p.num_objs
     # derived
@@ -97,7 +100,7 @@ def set_global_params(p):
 
 # NOT derived ones... don't need to store those
 def get_global_params():
-    return [K, delT, delT_phase, N, mass, gravity, mu, accel_lamb, cont_lamb, phase_weights, num_objs]
+    return [K, delT, delT_phase, N, mass, gravity, mu, accel_lamb, cont_lamb, cone_lamb, phase_weights, num_objs]
 
 # define global variables which will be used
 K = None
@@ -109,6 +112,7 @@ gravity = None
 mu = None
 accel_lamb = None
 cont_lamb = None
+cone_lamb = None
 phase_weights = None
 num_objs = None
 # derived

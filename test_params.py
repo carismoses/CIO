@@ -15,6 +15,7 @@ phase_weights_test = [[(0.,0.,1.), (0.0, 1.0, 1.0)],]#\
                       #[(0.,0.,1.), (0.0, 1.0, 1.5)]]
                       #[(0.,0.,1.), (0.1, 1.0, 1.0)]]
 cont_lamb_test_params = [1.e-5,]#[1.e-10, 1.e-8, 1.e-5, 1.e-3]
+cone_lamb_test_params = [1.e0, 1.e1, 1.e2]
 
 # TODO: unhard code these vars
 len_s = 33
@@ -89,11 +90,12 @@ def test_params(s0=None, S0=None, start_phase=0, filename=None):
 
     for accel_val in accel_lamb_test_params:
         for cont_lamb in cont_lamb_test_params:
-            for phase_weights in phase_weights_test:
-                test_params = {'accel_lamb':accel_val, 'phase_weights':phase_weights, \
-                'start_phase': start_phase, 'cont_lamb': cont_lamb}
-                ret_info = main(test_params,s0,S0)
-                write_to_file(ret_info, filename)
+            for cone_lamb in cone_lamb_test_params:
+                for phase_weights in phase_weights_test:
+                    test_params = {'accel_lamb':accel_val, 'phase_weights':phase_weights, \
+                    'start_phase': start_phase, 'cont_lamb': cont_lamb, 'cone_lamb': cone_lamb}
+                    ret_info = main(test_params,s0,S0)
+                    write_to_file(ret_info, filename)
 
 def make_header(filename):
     x = 'x'
