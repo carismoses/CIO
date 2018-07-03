@@ -15,11 +15,11 @@ phase_weights_test = [[(0.,0.,1.), (0.0, 1.0, 1.0)],]#\
                       #[(0.,0.,1.), (0.0, 1.0, 1.5)]]
                       #[(0.,0.,1.), (0.1, 1.0, 1.0)]]
 cont_lamb_test_params = [1.e-5,]#[1.e-10, 1.e-8, 1.e-5, 1.e-3]
-cone_lamb_test_params = [1.e0, 1.e1, 1.e2]
+cone_lamb_test_params = [0.5, 1., 3., 5., 8., 10.]
 
 # TODO: unhard code these vars
 len_s = 33
-num_ps = 21 # length of output vars to csv that are not part of s0 or Sfinal
+num_ps = 22 # length of output vars to csv that are not part of s0 or Sfinal
 
 fn_prefix = '/Users/caris/CIO/output_files/'
 fn_suff = '.csv'
