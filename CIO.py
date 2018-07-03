@@ -9,7 +9,7 @@ import theano.tensor as T
 from theano.ifelse import ifelse
 import params as p
 
-verbose = False
+verbose_step = False
 
 #### SURFACE NORMALS ####
 def get_normals(angles):
@@ -82,7 +82,8 @@ def L_physics(s, objects):
     # calc change in angular momentum
     l_dot = I*oa[2]
 
-    cost = np.linalg.norm(f_tot - p_dot)**2 + np.linalg.norm(m_tot - l_dot)**2
+    # removing angular momentum conservation until roj vars optimized through L_CI
+    cost = np.linalg.norm(f_tot - p_dot)**2 #+ np.linalg.norm(m_tot - l_dot)**2
     return cost
 
 def L_cone(s, objects):
@@ -178,8 +179,8 @@ def L(S, s0, objects, goal, phase_weights):
         tasks += task
         tot_cost += cost
 
-        if verbose:
-            print_step(tot_cost)
+        if verbose_step:
+            print_step(ci, kinem, phys, cones, cont, accel, task, cost)
     return tot_cost
 
 #### MAIN FUNCTION ####
@@ -191,7 +192,6 @@ def CIO(goal, objects, s0, S0):
     x = L(S0, s0, objects, goal, (1.,1.,1.))
     print(x)
     '''
-    
     bounds = get_bounds()
 
     ret_info = {}
@@ -208,7 +208,7 @@ def CIO(goal, objects, s0, S0):
         final_cost = res['fun']
 
         print_result(x_final, s0)
-        print("Final cost: ", final_cost)
+        print_final(final_cost)
         all_final_costs = [cis, kinems, physs, coness, conts, tasks, accels]
         ret_info[phase] = s0, x_final, final_cost, nit, all_final_costs
         x_init = x_final
@@ -219,7 +219,19 @@ def callback(xk):
     print(iter)
     iter += 1
 
-def print_step(tot_cost):
+def print_step(ci, kinem, phys, cones, cont, accel, task):
+    print("-----------------------")
+    print("cis:            ", ci)
+    print("kinematics:     ", kinem)
+    print("physics:        ", phys)
+    print("cone:           ", cones)
+    print("contact forces: ", cont)
+    print("accels:         ", accel)
+    print("task:           ", task)
+    print("total:          ", ci + kinem + phys + cones + cont + accel + task)
+
+def print_final(tot_cost):
+    print("----- final traj costs -----")
     print("cis:            ", cis)
     print("kinematics:     ", kinems)
     print("physics:        ", physs)
