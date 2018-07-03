@@ -5,9 +5,7 @@ from CIO import CIO
 import params as p
 from util import *
 
-testing1 = False
-testing2 = False
-testing_traj = False
+testing_traj = 4
 
 #### INITIALIZE DECISION VARIABLES ####
 def init_vars(objects):
@@ -103,6 +101,20 @@ def make_test_traj_cones(s0, S0, goal, objects):
         S0 = set_s(S0, s_new, t)
     return s0, S0
 
+def make_test_traj_cones_2(s0, S0, goal, objects):
+    f_gripper1 = np.array([1.5, 0.0])
+    f_ground = np.array([0.0, 10.0])
+    for t in range(0, p.K):
+        s = get_s(S0, t)
+        fj,_,cj = get_contact_info(s)
+        fj[0] = f_gripper1
+        fj[2] = f_ground
+        cj = [1., 0., 1.]
+        s_new = set_fj(fj, s)
+        s_new = set_contact(cj, s)
+        S0 = set_s(S0, s_new, t)
+    return s0, S0
+
 #### MAIN FUNCTION ####
 def main(test_params={}, s0=None, S0=None):
     #pdb.set_trace()
@@ -120,12 +132,14 @@ def main(test_params={}, s0=None, S0=None):
         s0, S0 = init_vars(objects)
 
     # potentially update with a test trajcetory
-    if testing1:
+    if testing_traj==0:
         s0, S0 = make_test_traj(s0, S0, goal, objects)
-    if testing2:
+    if testing_traj==1:
         s0, S0 = make_test_traj2(s0, S0, goal, objects)
-    if testing_traj:
+    if testing_traj==2:
         s0, S0 = make_test_traj_cones(s0, S0, goal, objects)
+    if testing_traj==3:
+        s0, S0 = make_test_traj_cones_2(s0, S0, goal, objects)
 
     # run CIO
     phase_info = CIO(goal, objects, s0, S0)
