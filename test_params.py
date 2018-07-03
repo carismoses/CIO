@@ -15,7 +15,7 @@ phase_weights_test = [[(0.,0.,1.), (0.0, 1.0, 1.0)],]#\
                       #[(0.,0.,1.), (0.0, 1.0, 1.5)]]
                       #[(0.,0.,1.), (0.1, 1.0, 1.0)]]
 cont_lamb_test_params = [1.e-5,]#[1.e-10, 1.e-8, 1.e-5, 1.e-3]
-cone_lamb_test_params = [0.5, 1., 3., 5., 8., 10.]
+cone_lamb_test_params = [0.001, 0.01, 0.1, 0.5, 1.]
 
 # TODO: unhard code these vars
 len_s = 33
