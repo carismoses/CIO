@@ -7,9 +7,10 @@ import params as p
 import pdb
 import sys
 import time
+from util import *
 
 # outer loop to call CIO's main function with different params to test
-accel_lamb_test_params = [1.e-15, 1.e-10, 1.e-5, 1.e-3, 1.e-1, 1.e0, 1.e1]
+accel_lamb_test_params = [1.e-3,]
 # ci, phys, task
 phase_weights_test = [[(0.,0.,1.),]]#, (0.0, 1.0, 1.0)],]#\
                       #[(0.,0.,1.), (0.0, 1.0, 1.5)]]
@@ -138,29 +139,74 @@ def write(filename, out):
         writer.writerow(out)
         f.close()
 
-def pretty_print(file_name):
+def pretty_print(file_name, row_num = None):
     filename = fn_prefix + str(file_name) + fn_suff
     if not os.path.isfile(filename):
         print('No file with this timestamp!')
         return
 
+    def print_row(row, header):
+        # this is SUPER hacky... fix
+        paramClass = p.Params()
+        p.set_global_params(paramClass)
+
+        # first augment the output
+        s0 = row[-p_dummy.len_S-p_dummy.len_s:-p_dummy.len_S]
+        S = row[-p_dummy.len_S:]
+
+        # convert to floats
+        s0 = np.array([float(i) for i in s0])
+        S = np.array([float(i) for i in S])
+
+        # augment
+        S_aug = augment_s(s0, S)
+
+        # print
+        print('---------------------------------------------------------')
+        params = row[:num_ps]
+        K = params[11]
+
+        # print params used in this run
+        for i in range(num_ps):
+            print(header[i] + ': ' + str(params[i]))
+
+        print()
+        # print values with their corresponding heading
+        header = header[num_ps+1:num_ps+1+p_dummy.len_s] + ['obj_0_accel_x',\
+            'obj_0_accel_y', 'obj_0_accel_th', 'obj_1_accel_x', 'obj_1_accel_y',\
+            'obj_1_accel_th', 'obj_2_accel_x', 'obj_2_accel_y', 'obj_2_accel_th']
+        for v in range(p_dummy.len_s+9):
+            if v < p_dummy.len_s:
+                print(header[v][:-4] + ':')
+            else:
+                print(header[v] + ':')
+            for k in range(p_dummy.T_steps+1):
+                if k == 0:
+                    if v < p_dummy.len_s:
+                        print('   ' + str(s0[v]))
+                else:
+                    print('   ' + str(S_aug[(p_dummy.len_s_aug*(k-1)) + v]))
+
     with open(filename, 'r') as f:
         reader = csv.reader(f, delimiter=',')
-        row_num = 0
+        reader = list(reader)
+
+        # make header
+        i = 0
         for row in reader:
             if row[0] == 'git hash':
                 header = row
-            elif row[0][:6] != 'Coming':
-                print('---------------------------------------------------------')
-                prologue = row[:num_ps]
-                K = prologue[11]
-                for i in range(num_ps):
-                    print(header[i] + ': ' + str(prologue[i]))
-                for v in range(len_s):
-                    print(header[num_ps+1+v][:-4] + ':')
-                    for k in range(int(K)+1):
-                        print('   ' + str(row[num_ps + 1 + (len_s*k) + v]))
-            row_num += 1
+                break
+            i += 1
+
+        # pretty print all rows or just row_num
+        if row_num != None:
+            row = reader[int(row_num)]
+            print_row(row, header)
+        else:
+            for row in reader:
+                if row[0][:6] != 'Coming':
+                    print_row(row, header)
 
 if __name__ == '__main__':
     global start
@@ -173,6 +219,10 @@ if __name__ == '__main__':
         restart(file_name, int(file_line_num))
     elif args[1] == 'pp':
         file_name = args[2]
-        pretty_print(file_name)
+        if len(args) == 4:
+            print_line = args[3]
+            pretty_print(file_name, print_line)
+        else:
+            pretty_print(file_name)
     else:
         print('Arguments are not valid')
