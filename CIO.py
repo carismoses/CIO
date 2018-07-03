@@ -202,7 +202,7 @@ def CIO(goal, objects, s0, S0):
         iter = 0
         x_init = add_noise(x_init)
         phase_weights = p.phase_weights[phase]
-        res = minimize(fun=L, x0=x_init, args=(s0, objects, goal, phase_weights), method='L-BFGS-B', bounds=bounds, callback=callback)
+        res = minimize(fun=L, x0=x_init, args=(s0, objects, goal, phase_weights), method='L-BFGS-B', bounds=bounds, options={'eps': 1.e-2}, callback=callback)
         x_final = res['x']
         nit = res['nit']
         final_cost = res['fun']
