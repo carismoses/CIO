@@ -3,6 +3,8 @@ import pdb
 from scipy.interpolate import BPoly
 import params as p
 
+np.random.seed(0)
+
 #### GET FUNCTIONS ####
 def get_gripper1_pos(s):
     i,j = get_gripper1_pos_ind()
