@@ -12,11 +12,9 @@ from util import *
 # outer loop to call CIO's main function with different params to test
 accel_lamb_test_params = [1.e-3,]
 # ci, phys, task
-phase_weights_test = [[(0.,0.,1.), (0.0, 1.0, 1.0)],]#\
-                      #[(0.,0.,1.), (0.0, 1.0, 1.5)]]
-                      #[(0.,0.,1.), (0.1, 1.0, 1.0)]]
-cont_lamb_test_params = [1.e-5, 1.e-3, 1.e0, 1.e3, 1.e5]
-cone_lamb_test_params = [1.e-5, 1.e-3, 1.e0, 1.e3, 1.e5]
+phase_weights_test = [[(0.,0.,1.), (0.,1.,1.)],]
+cont_lamb_test_params = [1.e-7]
+cone_lamb_test_params = [3.e-3]
 
 # TODO: unhard code these vars
 len_s = 33
@@ -31,7 +29,7 @@ p_dummy = p.Params()
 # start_phase is the phase that you would like the start the optimization from
 # file_name is the date-time stamp from the file to get initial vars from
 # file_line_num is the line number you would like to load the initial vars from
-def restart(old_file_name, file_line_num):
+def restart(old_file_name, file_line_num, single=False):
     old_filename = fn_prefix + old_file_name + fn_suff
     if not os.path.isfile(old_filename):
         print('This file does not exist!')
@@ -61,7 +59,7 @@ def restart(old_file_name, file_line_num):
 
     # this 1 should not be hard coded but the phase number is currently the 2nd number in the vars
     start_phase = int(start_vars[1]) + 1
-    test_params(s0, S0, start_phase, filename)
+    test_params(s0, S0, start_phase, filename, single)
 
 # TODO: should also return parameters used to ensure that the same parameters are used in the restart
 def make_init_vars(init_vars):
@@ -81,7 +79,7 @@ def write_to_file(ret_info, filename):
 
         write(filename, out)
 
-def test_params(s0=None, S0=None, start_phase=0, filename=None):
+def test_params(s0=None, S0=None, start_phase=0, filename=None, single=False, traj=0):
     if filename == None:
         date_time = datetime.now().strftime("%Y-%m-%d") + '_' + datetime.now().strftime("%H%M")
         filename = fn_prefix + date_time + fn_suff
@@ -95,7 +93,7 @@ def test_params(s0=None, S0=None, start_phase=0, filename=None):
                 for phase_weights in phase_weights_test:
                     test_params = {'accel_lamb':accel_val, 'phase_weights':phase_weights, \
                     'start_phase': start_phase, 'cont_lamb': cont_lamb, 'cone_lamb': cone_lamb}
-                    ret_info = main(test_params,s0,S0)
+                    ret_info = main(test_params,s0,S0, single=single, traj=traj)
                     write_to_file(ret_info, filename)
 
 def make_header(filename):
@@ -212,11 +210,19 @@ if __name__ == '__main__':
     global start
     start = time.time()
     args = sys.argv
-    if len(args) == 1:
-        test_params()
+    if args[1] == 'test':
+        if len(args) > 2:
+            traj = args[2]
+        else:
+            traj = 0
+        test_params(traj=traj)
     elif args[1] == 'restart':
-        file_name, file_line_num = args[2:]
-        restart(file_name, int(file_line_num))
+        file_name, file_line_num = args[2:4]
+        if len(args) == 5:
+            single = True
+            restart(file_name, int(file_line_num), single)
+        else:
+            restart(file_name, int(file_line_num))
     elif args[1] == 'pp':
         file_name = args[2]
         if len(args) == 4:
