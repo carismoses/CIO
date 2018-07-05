@@ -210,7 +210,9 @@ if __name__ == '__main__':
     global start
     start = time.time()
     args = sys.argv
-    if args[1] == 'test':
+    if len(args) == 1:
+        print('Possible args are: test, restart, and pp')
+    elif args[1] == 'test':
         if len(args) > 2:
             traj = args[2]
         else:
