@@ -30,9 +30,10 @@ class Params(object):
     def __init__(self, test_params = {}, num_moveable_objects = 3):
         self.default_params = {'K': 5, 'delT': 0.1, 'delT_phase': 0.5, 'N': 3, \
                                 'mass': 1.0, 'gravity': 10.0, 'mu': 0.3, \
-                                'accel_lamb': 1.e-15, 'cont_lamb': 1.e0, \
-                                'cone_lamb': 1.e0,\
-                                'phase_weights': [], 'num_objs': num_moveable_objects}
+                                'accel_lamb': 1.e-3, 'cont_lamb': 1.e-7, \
+                                'cone_lamb': 1.e-3,\
+                                'phase_weights': [[0.0, 0.0, 1.0],[0.0, 1.0, 1.0]], \
+                                'num_objs': num_moveable_objects}
         self.test_params = test_params
         self.set_test_params()
         self.set_default_params()
