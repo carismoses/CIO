@@ -5,8 +5,6 @@ from CIO import CIO
 import params as p
 from util import *
 
-testing_traj = 4
-
 #### INITIALIZE DECISION VARIABLES ####
 def init_vars(objects):
     _, box, _, _ = objects
@@ -28,7 +26,7 @@ def init_vars(objects):
     # rO is in object (box) frame
     con0 = [0.0, 0.0,  0.0, 15.0, 0.5] # gripper1
     con1 = [0.0, 0.0, 10.0, 15.0, 0.5] # gripper2
-    con2 = [0.0, 0.0,  5.0, 0.0, 0.5] # ground
+    con2 = [0.0, 10.0,  5.0, 0.0, 1.0] # ground
 
     s0[18:p.len_s] = (con0 + con1 + con2)
 
@@ -56,7 +54,7 @@ def init_objects():
                     actuated = True)
 
     objects = [ground, box, gripper1, gripper2]
-    goal = ("box", (15.0, 0.0, np.pi/2))
+    goal = ("box", (10.0, 0.0, np.pi/2))
     return goal, objects
 
 #### test trajectories ####
@@ -115,8 +113,27 @@ def make_test_traj_cones_2(s0, S0, goal, objects):
         S0 = set_s(S0, s_new, t)
     return s0, S0
 
+def make_min_traj(s0, S0, goal, objects):
+    object_poses = [5.2, 6.1, 7., 8.5, 10]
+    object_vel = [.8, 1.9, 2.5, 3.2, 2.8]
+    j = 0
+    gripper1_fx = [4.6, 4.7, 4.5, 3.9, 3.0]
+    for t in range(0, p.K):
+        s = get_s(S0, t)
+        pos = get_object_pos(s)
+        vel = get_object_vel(s)
+        pos = [object_poses[t], pos[1], pos[2]]
+        vel = [object_vel[t], vel[1], vel[2]]
+        s = set_object_pos(pos, s)
+        s = set_object_vel(vel, s)
+        fj,_,c = get_contact_info(s)
+        fj[j][0] = gripper1_fx[t]
+        s = set_fj(fj,s)
+        s = set_contact(c,s)
+    return s0, S0
+
 #### MAIN FUNCTION ####
-def main(test_params={}, s0=None, S0=None):
+def main(test_params={}, s0=None, S0=None, single=False, traj=0):
     #pdb.set_trace()
 
     # initialize objects
@@ -132,17 +149,20 @@ def main(test_params={}, s0=None, S0=None):
         s0, S0 = init_vars(objects)
 
     # potentially update with a test trajcetory
-    if testing_traj==0:
+    traj = int(traj)
+    if traj==1:
         s0, S0 = make_test_traj(s0, S0, goal, objects)
-    if testing_traj==1:
+    if traj==2:
         s0, S0 = make_test_traj2(s0, S0, goal, objects)
-    if testing_traj==2:
+    if traj==3:
         s0, S0 = make_test_traj_cones(s0, S0, goal, objects)
-    if testing_traj==3:
+    if traj==4:
         s0, S0 = make_test_traj_cones_2(s0, S0, goal, objects)
+    if traj==5:
+        s0, S0 = make_min_traj(s0, S0, goal, objects)
 
     # run CIO
-    phase_info = CIO(goal, objects, s0, S0)
+    phase_info = CIO(goal, objects, s0, S0, single)
 
     return phase_info
 
