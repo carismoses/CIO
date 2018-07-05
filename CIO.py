@@ -184,14 +184,20 @@ def L(S, s0, objects, goal, phase_weights):
     return tot_cost
 
 #### MAIN FUNCTION ####
-def CIO(goal, objects, s0, S0):
+def CIO(goal, objects, s0, S0, single=False):
     global iter
 
-    '''
-    # FOR TESTING A SINGLE traj
+    if single:
+        # FOR TESTING A SINGLE traj
+        pdb.set_trace()
+        x = L(S0, s0, objects, goal, (1.,1.,1.))
+        print_final(x)
+        return {}
+
+    print('Cost of initial trajectory:')
     x = L(S0, s0, objects, goal, (1.,1.,1.))
-    print(x)
-    '''
+    print_final(x)
+
     bounds = get_bounds()
 
     ret_info = {}
