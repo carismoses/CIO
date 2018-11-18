@@ -69,9 +69,9 @@ def make_test_traj(s0, S0, goal, objects):
     for t in range(1,p.K+1):
         S0[(t-1)*p.len_s+l:(t-1)*p.len_s+r] = [interp_poses_x[t], interp_poses_y[t], \
                                             interp_poses_th[t]]
-        vx = calc_deriv(interp_poses_x[t], interp_poses_x[t-1], delT_phase)
-        vy = calc_deriv(interp_poses_y[t], interp_poses_y[t-1], delT_phase)
-        vth = calc_deriv(interp_poses_th[t], interp_poses_th[t-1], delT_phase)
+        vx = calc_deriv(interp_poses_x[t], interp_poses_x[t-1], p.delT_phase)
+        vy = calc_deriv(interp_poses_y[t], interp_poses_y[t-1], p.delT_phase)
+        vth = calc_deriv(interp_poses_th[t], interp_poses_th[t-1], p.delT_phase)
         S0[(t-1)*p.len_s+vl:(t-1)*p.len_s+vr] = [vx, vy, vth]
     return s0, S0
 
