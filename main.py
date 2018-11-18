@@ -82,11 +82,11 @@ def make_test_traj2(s0, S0, goal, objects):
     goal = goal[1]
     for t in range(1,p.K+1):
         if t == p.K:
-            S0[(t-1)*p.len_s+l:(t-1)*len_s+r] = goal
+            S0[(t-1)*p.len_s+l:(t-1)*p.len_s+r] = goal
     return s0, S0
 
 def make_test_traj_cones(s0, S0, goal, objects):
-    pdb.set_trace()
+    #pdb.set_trace()
     # gripper 1 force range (need to also vary the gripper 0 angle)
     f_mag = 10
     f_angles = np.linspace(0., 2*np.pi, p.K)

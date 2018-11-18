@@ -32,7 +32,7 @@ p_dummy = p.Params()
 def restart(old_file_name, file_line_num, single=False):
     old_filename = fn_prefix + old_file_name + fn_suff
     if not os.path.isfile(old_filename):
-        print('This file does not exist!')
+        print 'This file does not exist!'
         return
 
     # read in old file to get starting information from
@@ -47,8 +47,8 @@ def restart(old_file_name, file_line_num, single=False):
     # check for file compatibility (TODO: this is before you change for test
     # params, so set params before this check, or check for compatibility after test params are set)
     if len(S0)/len_s != p_dummy.K:
-        print('The file you are attempting to restart from has a different K value')
-        print('than the K you are currently trying to test')
+        print 'The file you are attempting to restart from has a different K value'
+        print 'than the K you are currently trying to test'
 
     # add the file the old file information
     date_time = datetime.now().strftime("%Y-%m-%d") + '_' + datetime.now().strftime("%H%M")
@@ -141,7 +141,7 @@ def write(filename, out):
 def pretty_print(file_name, row_num = None):
     filename = fn_prefix + str(file_name) + fn_suff
     if not os.path.isfile(filename):
-        print('No file with this timestamp!')
+        print 'No file with this timestamp!'
         return
 
     def print_row(row, header):
@@ -161,30 +161,30 @@ def pretty_print(file_name, row_num = None):
         S_aug = augment_s(s0, S)
 
         # print
-        print('---------------------------------------------------------')
+        print '---------------------------------------------------------'
         params = row[:num_ps]
         K = params[11]
 
         # print params used in this run
         for i in range(num_ps):
-            print(header[i] + ': ' + str(params[i]))
+            print header[i] + ': ' + str(params[i])
 
-        print()
+        print ''
         # print values with their corresponding heading
         header = header[num_ps+1:num_ps+1+p_dummy.len_s] + ['obj_0_accel_x',\
             'obj_0_accel_y', 'obj_0_accel_th', 'obj_1_accel_x', 'obj_1_accel_y',\
             'obj_1_accel_th', 'obj_2_accel_x', 'obj_2_accel_y', 'obj_2_accel_th']
         for v in range(p_dummy.len_s+9):
             if v < p_dummy.len_s:
-                print(header[v][:-4] + ':')
+                print header[v][:-4] + ':'
             else:
-                print(header[v] + ':')
+                print header[v] + ':'
             for k in range(p_dummy.T_steps+1):
                 if k == 0:
                     if v < p_dummy.len_s:
-                        print('   ' + str(s0[v]))
+                        print '   ' + str(s0[v])
                 else:
-                    print('   ' + str(S_aug[(p_dummy.len_s_aug*(k-1)) + v]))
+                    print '   ' + str(S_aug[(p_dummy.len_s_aug*(k-1)) + v])
 
     with open(filename, 'r') as f:
         reader = csv.reader(f, delimiter=',')
@@ -204,7 +204,7 @@ def pretty_print(file_name, row_num = None):
             print_row(row, header)
         else:
             for row in reader:
-                if row[0][:6] != 'Coming':
+                if row[0][:6] != 'Coming' and row[0] != 'git hash':
                     print_row(row, header)
 
 if __name__ == '__main__':
@@ -212,7 +212,7 @@ if __name__ == '__main__':
     start = time.time()
     args = sys.argv
     if len(args) == 1:
-        print('Possible args are: test, restart, and pp')
+        print 'Possible args are: test, restart, and pp'
     elif args[1] == 'test':
         if len(args) > 2:
             traj = args[2]
@@ -234,4 +234,4 @@ if __name__ == '__main__':
         else:
             pretty_print(file_name)
     else:
-        print('Arguments are not valid')
+        print 'Arguments are not valid'

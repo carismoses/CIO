@@ -142,15 +142,17 @@ def L_accel(s):
 def L(S, s0, objects, goal, phase_weights):
     global cis, kinems, physs, coness, conts, tasks, accels
     # augment by calculating the accelerations from the velocities
-    # interpolate all of the decision vars to get a finer trajcetory disretization
+    # interpolate all of the decision vars to get a finer trajectory disretization
     S_aug = augment_s(s0, S)
 
+    # world traj stores current object information used to calculate e vars for L_CI
     world_traj = WorldTraj(s0, S_aug, objects)
     tot_cost = 0.0
     cis, kinems, physs, coness, conts, tasks, accels = \
                             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
     for t in range(1,p.T_steps):
+        # s_tm1 is s from t-1
         if t == 1:
             s_tm1 = s0
         else:
@@ -194,7 +196,7 @@ def CIO(goal, objects, s0, S0, single=False):
         print_final(x)
         return {}
 
-    print('Cost of initial trajectory:')
+    print 'Cost of initial trajectory:'
     x = L(S0, s0, objects, goal, (1.,1.,1.))
     print_final(x)
 
@@ -222,67 +224,67 @@ def CIO(goal, objects, s0, S0, single=False):
 
 def callback(xk):
     global iter
-    print(iter)
+    print 'iter: ', iter
     iter += 1
 
 def print_step(ci, kinem, phys, cones, cont, accel, task):
-    print("-----------------------")
-    print("cis:            ", ci)
-    print("kinematics:     ", kinem)
-    print("physics:        ", phys)
-    print("cone:           ", cones)
-    print("contact forces: ", cont)
-    print("accels:         ", accel)
-    print("task:           ", task)
-    print("total:          ", ci + kinem + phys + cones + cont + accel + task)
+    print '----- step costs ------'
+    print 'cis:            ', ci
+    print 'kinematics:     ', kinem
+    print 'physics:        ', phys
+    print 'cone:           ', cones
+    print 'contact forces: ', cont
+    print 'accels:         ', accel
+    print 'task:           ', task
+    print 'total:          ', ci + kinem + phys + cones + cont + accel + task
 
 def print_final(tot_cost):
-    print("----- final traj costs -----")
-    print("cis:            ", cis)
-    print("kinematics:     ", kinems)
-    print("physics:        ", physs)
-    print("cone:           ", coness)
-    print("contact forces: ", conts)
-    print("accels:         ", accels)
-    print("task:           ", tasks)
-    print("TOTAL: ", tot_cost)
+    print '----- traj costs -----'
+    print 'cis:            ', cis
+    print 'kinematics:     ', kinems
+    print 'physics:        ', physs
+    print 'cone:           ', coness
+    print 'contact forces: ', conts
+    print 'accels:         ', accels
+    print 'task:           ', tasks
+    print 'TOTAL: ', tot_cost
 
 def print_result(x, s0):
     # augement the output
     x_aug = augment_s(s0,x)
 
     # pose trajectory
-    print("pose trajectory:")
+    print 'pose trajectory:'
     for t in range(p.T_steps+1):
         if t == 0:
             box_pose = get_object_pos(s0)
         else:
             s_t = get_s(x_aug, t-1)
             box_pose = get_object_pos(s_t)
-        print(box_pose, t)
+        print box_pose, t
 
     # velocity trajectory
-    print("vel trajectory:")
+    print 'vel trajectory:'
     for t in range(p.T_steps+1):
         if t == 0:
             box_vel = get_object_vel(s0)
         else:
             s_t = get_s(x_aug, t-1)
             box_vel = get_object_vel(s_t)
-        print(box_vel, t)
+        print box_vel, t
 
     # accel trajectory
-    print("accel trajectory:")
+    print 'accel trajectory:'
     for t in range(p.T_steps+1):
         if t == 0:
             box_accel = get_object_accel(s0)
         else:
             s_t = get_s(x_aug, t-1)
             box_accel = get_object_accel(s_t)
-        print(box_accel, t)
+        print box_accel, t
 
     # contact forces
-    print("contact forces:")
+    print 'contact forces:'
     for t in range(p.T_steps+1):
         if t == 0:
             contact_info = get_contact_info(s0)
@@ -291,10 +293,10 @@ def print_result(x, s0):
             s_t = get_s(x_aug, t-1)
             contact_info = get_contact_info(s_t)
             force = contact_info[0]
-        print(t, ":\n", force)
+        print t, ':\n', force
 
     # contact poses
-    print("contact poses:")
+    print 'contact poses:'
     for t in range(p.T_steps+1):
         if t == 0:
             contact_info = get_contact_info(s0)
@@ -303,10 +305,10 @@ def print_result(x, s0):
             s_t = get_s(x_aug, t-1)
             contact_info = get_contact_info(s_t)
             pos = contact_info[1]
-        print(t, ":\n", pos)
+        print t, ':\n', pos
 
     # contact coefficients
-    print("coefficients:")
+    print 'coefficients:'
     for t in range(p.T_steps+1):
         if t == 0:
             contact_info = get_contact_info(s0)
@@ -315,4 +317,4 @@ def print_result(x, s0):
             s_t = get_s(x_aug, t-1)
             contact_info = get_contact_info(s_t)
             contact = contact_info[2]
-        print(t, ":\n", contact)
+        print t, ':\n', contact
