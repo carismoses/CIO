@@ -20,7 +20,7 @@ cone_lamb_test_params = [1.e-3]#, 1.e-2, 1.e-1]
 len_s = 33
 num_ps = 22 # length of output vars to csv that are not part of s0 or Sfinal
 
-fn_prefix = '/Users/caris/CIO/output_files/'
+fn_prefix = '/Users/carismoses/CIO/output_files/'
 fn_suff = '.csv'
 
 p_dummy = p.Params()
@@ -124,7 +124,8 @@ def make_header(filename):
             S_final_names += [s_names[j] + '_K=' + str(k+1)]
 
     # make a dummy param dict just to get keys
-    param_names = list(p_dummy.default_params.keys())
+    param_names = ['K', 'delT', 'delT_phase', 'N', 'mass', 'gravity', 'mu', 'accel_lamb', \
+                    'cont_lamb', 'cone_lamb', 'phase_weights', 'num_objs']
     out_names = ['git hash', 'phase', 'final cost', 'iterations', 'ci_costs', 'kinem_costs', \
                     'phys_costs', 'cones_costs', 'cont_costs', 'task_costs', 'accel_costs']
     out_names += param_names + s0_names + S_final_names
