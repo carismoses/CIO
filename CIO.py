@@ -156,10 +156,10 @@ def L(S, s0, objects, goal, phase_weights):
         if t == 1:
             s_tm1 = s0
         else:
-            s_tm1 = get_s(S_aug, t-1)
+            s_tm1 = get_s(S_aug, t-2)
 
         world_traj.step(t)
-        s_aug_t = get_s(S_aug,t)
+        s_aug_t = get_s(S_aug,t-1)
 
         wci, wphys, wtask = phase_weights
 
