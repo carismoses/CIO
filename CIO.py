@@ -208,7 +208,8 @@ def CIO(goal, objects, s0, S0, single=False):
         p.phase_weights = [(1.,1.,1.),]
     for phase in range(p.start_phase, len(p.phase_weights)):
         iter = 0
-        x_init = add_noise(x_init)
+        if phase == 0:
+            x_init = add_noise(x_init)
         phase_weights = p.phase_weights[phase]
         res = minimize(fun=L, x0=x_init, args=(s0, objects, goal, phase_weights), method='L-BFGS-B', bounds=bounds, options={'eps': 1.e-2}, callback=callback)
         x_final = res['x']
