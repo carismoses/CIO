@@ -1,7 +1,12 @@
 # CIO implementation
 from scipy.optimize import fmin_l_bfgs_b, minimize
+import imageio
+import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pdb
+import shutil
+import tempfile
 from world import WorldTraj
 from util import *
 import theano
@@ -200,6 +205,8 @@ def CIO(goal, objects, s0, S0, single=False):
     x = L(S0, s0, objects, goal, (1.,1.,1.))
     print_final(x)
 
+    visualize_result(S0, s0, objects, goal, 'initial.gif')
+
     bounds = get_bounds()
 
     ret_info = {}
@@ -211,12 +218,14 @@ def CIO(goal, objects, s0, S0, single=False):
         if phase == 0:
             x_init = add_noise(x_init)
         phase_weights = p.phase_weights[phase]
+        print "PHASE WEIGHTS:", phase_weights
         res = minimize(fun=L, x0=x_init, args=(s0, objects, goal, phase_weights), method='L-BFGS-B', bounds=bounds, options={'eps': 1.e-2}, callback=callback)
         x_final = res['x']
         nit = res['nit']
         final_cost = res['fun']
 
         print_result(x_final, s0)
+        visualize_result(x_final, s0, objects, goal, 'phase_{}.gif'.format(phase))
         print_final(final_cost)
         all_final_costs = [cis, kinems, physs, coness, conts, tasks, accels]
         ret_info[phase] = s0, x_final, final_cost, nit, all_final_costs
@@ -319,3 +328,66 @@ def print_result(x, s0):
             contact_info = get_contact_info(s_t)
             contact = contact_info[2]
         print t, ':\n', contact
+
+
+def visualize_result(S0, s0, objects, goal, outfile):
+    x_aug = augment_s(s0,S0)
+
+    temp_dirpath = tempfile.mkdtemp()
+    image_filenames = []
+
+    ground, box, gripper1, gripper2 = objects
+
+    for t in range(p.T_steps+1):
+        plt.figure()
+
+        if t == 0:
+            s_t = s0
+        else:
+            s_t = get_s(x_aug, t-1)
+
+        fj, roj, cj = get_contact_info(s_t)
+        f_tot = np.array([0.0, 0.0])
+        for j in range(p.N):
+            f_tot += cj[j]*fj[j]
+        f_tot[1] += -p.mass*p.gravity
+        ov = get_object_vel(s_t)
+        fric = (-1*np.sign(ov[0]))*p.mu*cj[2]*fj[2][1]
+        f_tot[0] += fric
+        
+        box_pose = get_object_pos(s_t)
+        gripper1_pose = get_gripper1_pos(s_t)
+        gripper2_pose = get_gripper2_pos(s_t)
+        
+        box_rect = plt.Rectangle(box_pose[:2], box.width, box.height, fc='r')
+        plt.gca().add_patch(box_rect)
+
+        box_origin = plt.Circle(box_pose[:2], box.height/10., fc='gray')
+        plt.gca().add_patch(box_origin)
+
+        gripper1_endpoint = gripper1_pose[:2] + gripper1.length*np.array((np.cos(gripper1_pose[2]), np.sin(gripper1_pose[2])))
+        plt.plot([gripper1_pose[0], gripper1_endpoint[0]], [gripper1_pose[1], gripper1_endpoint[1]], c='black', linewidth=3.)
+
+        gripper2_endpoint = gripper2_pose[:2] + gripper2.length*np.array((np.cos(gripper2_pose[2]), np.sin(gripper2_pose[2])))
+        plt.plot([gripper2_pose[0], gripper2_endpoint[0]], [gripper2_pose[1], gripper2_endpoint[1]], c='black', linewidth=3.)
+
+        goal_circ = plt.Circle(goal[1][:2], box.height/10., fc='g')
+        plt.gca().add_patch(goal_circ)
+
+        plt.arrow(box_pose[0] + box.width/2., box_pose[1] + box.height/2., f_tot[0], f_tot[1], 
+            head_width=0.5, head_length=1., fc='k', ec='k')
+
+        plt.xlim((-10., 50))
+        plt.ylim((-10., 50))
+        plt.tight_layout()
+        plt.axes().set_aspect('equal', 'datalim')
+        image_filename = os.path.join(temp_dirpath, '{}.png'.format(t))
+        plt.savefig(image_filename)
+        image_filenames.append(image_filename)
+
+    images = [imageio.imread(filename) for filename in image_filenames]
+    imageio.mimsave(outfile, images, fps=10)
+    print "Wrote out to {}.".format(outfile)
+
+    shutil.rmtree(temp_dirpath)
+
