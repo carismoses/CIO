@@ -1,4 +1,4 @@
-from main import main
+from main import main, init_objects
 import git
 import csv
 import os
@@ -8,11 +8,13 @@ import pdb
 import sys
 import time
 from util import *
+from CIO import visualize_result
 
 # outer loop to call CIO's main function with different params to test
 accel_lamb_test_params = [1.e-3,]
 # ci, phys, task
-phase_weights_test = [[(0.0, 0.1, 1.0), (0.0, 1.0, 1.0)],]
+# phase_weights_test = [[(0.0, 0.1, 1.0), (0.0, 1.0, 1.0)],]
+phase_weights_test = [[(0.1, 0.1, 1.0), (10., 1.0, 1.0)]]
 cont_lamb_test_params = [1.e-7]#, 1.e-5, 1.e-1, 0.0]
 cone_lamb_test_params = [1.e-3]#, 1.e-2, 1.e-1]
 
@@ -20,7 +22,7 @@ cone_lamb_test_params = [1.e-3]#, 1.e-2, 1.e-1]
 len_s = 33
 num_ps = 22 # length of output vars to csv that are not part of s0 or Sfinal
 
-fn_prefix = '/Users/carismoses/CIO/output_files/'
+fn_prefix = '/Users/tom/phd/CIO/output_files/'
 fn_suff = '.csv'
 
 p_dummy = p.Params()
@@ -60,6 +62,45 @@ def restart(old_file_name, file_line_num, single=False):
     # this 1 should not be hard coded but the phase number is currently the 2nd number in the vars
     start_phase = int(start_vars[1]) + 1
     test_params(s0, S0, start_phase, filename, single)
+
+
+def visualize_from_file(old_file_name, file_line_num):
+    old_filename = fn_prefix + old_file_name + fn_suff
+    if not os.path.isfile(old_filename):
+        print 'This file does not exist!'
+        return
+
+    # read in old file to get starting information from
+    with open(old_filename, 'r') as f:
+        reader = csv.reader(f, delimiter=',')
+        reader = list(reader)
+
+    start_vars = reader[file_line_num]
+    s0, S0 = make_init_vars(start_vars)
+
+    start_phase = int(start_vars[1]) + 1
+
+    goal, objects = init_objects()
+    num_moveable_objects = len(objects) - 1
+
+    # TODO
+    assert len(accel_lamb_test_params) == 1
+    accel_val = accel_lamb_test_params[0]
+    assert len(cont_lamb_test_params) == 1
+    cont_lamb = cont_lamb_test_params[0]
+    assert len(cone_lamb_test_params) == 1
+    cone_lamb = cone_lamb_test_params[0]
+    assert len(phase_weights_test) == 1
+    phase_weights = phase_weights_test[0]
+    
+    test_params = {'accel_lamb':accel_val, 'phase_weights':phase_weights, \
+        'start_phase': start_phase, 'cont_lamb': cont_lamb, 'cone_lamb': cone_lamb}
+
+    paramClass = p.Params(test_params, num_moveable_objects)
+    p.set_global_params(paramClass)
+
+    visualize_result(S0, s0, objects, goal, 'loaded.gif')
+
 
 # TODO: should also return parameters used to ensure that the same parameters are used in the restart
 def make_init_vars(init_vars):
@@ -233,5 +274,9 @@ if __name__ == '__main__':
             pretty_print(file_name, print_line)
         else:
             pretty_print(file_name)
+
+    elif args[1] == 'visualize':
+        file_name, file_line_num = args[2:4]
+        visualize_from_file(file_name, int(file_line_num))
     else:
         print 'Arguments are not valid'
