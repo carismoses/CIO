@@ -58,6 +58,7 @@ def init_objects():
 
     objects = [ground, box, gripper1, gripper2]
     goal = ("box", (50.0, rad, np.pi/2))
+
     return goal, objects
 
 #### test trajectories ####
