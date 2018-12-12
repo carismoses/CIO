@@ -1,6 +1,6 @@
 import numpy as np
 import pdb
-from world import Line, Rectangle
+from world import Line, Rectangle, Circle
 from CIO import CIO
 import params as p
 from util import *
