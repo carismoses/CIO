@@ -22,7 +22,7 @@ cone_lamb_test_params = [1.e-3]#, 1.e-2, 1.e-1]
 len_s = 33
 num_ps = 22 # length of output vars to csv that are not part of s0 or Sfinal
 
-fn_prefix = '/Users/tom/phd/CIO/output_files/'
+fn_prefix = '/Users/carismoses/CIO/output_files/'
 fn_suff = '.csv'
 
 p_dummy = p.Params()
@@ -92,7 +92,7 @@ def visualize_from_file(old_file_name, file_line_num):
     cone_lamb = cone_lamb_test_params[0]
     assert len(phase_weights_test) == 1
     phase_weights = phase_weights_test[0]
-    
+
     test_params = {'accel_lamb':accel_val, 'phase_weights':phase_weights, \
         'start_phase': start_phase, 'cont_lamb': cont_lamb, 'cone_lamb': cone_lamb}
 
