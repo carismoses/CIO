@@ -42,8 +42,11 @@ def init_objects():
     # ground: origin is left
     ground = Line((0.0, 0.0), 0.0, 30.0, contact_index = 2)
 
+    # circle: origin is center of the circle
+    rad = 5.0
+    box = Circle(pose=(5.0, rad), angle=0.0, radius=rad, vel = (0.0, 0.0, 0.0), pose_index = 2)
     # box: origin is left bottom of box
-    box = Rectangle((5.0, 0.0), np.pi/2, 10.0, 10.0, vel = (0.0, 0.0, 0.0), pose_index = 2)
+    #box = Rectangle((5.0, 0.0), np.pi/2, 10.0, 10.0, vel = (0.0, 0.0, 0.0), pose_index = 2)
 
     # gripper1: origin is bottom of line
     gripper1 = Line((5.0, 15.0), 3*np.pi/2, 2.0, pose_index = 0, contact_index = 0,\
@@ -54,7 +57,7 @@ def init_objects():
                     actuated = True)
 
     objects = [ground, box, gripper1, gripper2]
-    goal = ("box", (10.0, 0.0, np.pi/2))
+    goal = ("box", (50.0, rad, np.pi/2))
     return goal, objects
 
 #### test trajectories ####
