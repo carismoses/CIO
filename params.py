@@ -29,7 +29,7 @@ len_S_aug
 class Params(object):
     def __init__(self, test_params = {}, num_moveable_objects = 3):
         self.default_params = {'K': 5, 'delT': 0.1, 'delT_phase': 0.5, 'N': 3, \
-                                'mass': 1.0, 'gravity': 10.0, 'mu': 0.3, \
+                                'mass': 1.0, 'gravity': 10.0, 'mu': 0.1, \
                                 'accel_lamb': 1.e-3, 'cont_lamb': 1.e-7, \
                                 'cone_lamb': 1.e-3,\
                                 'phase_weights': [[0.0, 0.0, 1.0],[0.0, 1.0, 1.0]], \

@@ -196,6 +196,30 @@ class Rectangle(Object):
         closest_point = sum(np.multiply(nu,p_nearest))
         return closest_point
 
+
+class Circle(Object):
+    def __init__(self, pose = (0.0,0.0), angle = 0., radius = 10.0,  vel = (0.0, 0.0, 0.0), \
+                actuated = False, pose_index = None, contact_index = None, step_size = 0.5):
+        self.radius = radius
+        super(Circle,self).__init__(pose, angle, vel, actuated, pose_index, contact_index,\
+                                        step_size)
+
+    def discretize(self):
+        pass#TODO
+
+    def check_inside(self, point):
+        pass#TODO
+
+    # return the closest projected point out of all rect surfaces
+    def project_point(self, point):
+
+        origin_to_point = np.subtract(point[:2], self.pose[:2])
+        origin_to_point /= np.linalg.norm(origin_to_point)
+
+        closest_point = self.pose + (origin_to_point * self.radius)
+
+        return closest_point
+
 #### geometric helper functions ####
 def get_dist(point0, point1):
     return np.linalg.norm(point1 - point0)**2

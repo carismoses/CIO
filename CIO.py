@@ -347,13 +347,21 @@ def visualize_result(S0, s0, objects, goal, outfile):
             s_t = get_s(x_aug, t-1)
 
         fj, roj, cj = get_contact_info(s_t)
-        f_tot = np.array([0.0, 0.0])
+        f_contact = np.array([0.0, 0.0])
         for j in range(p.N):
-            f_tot += cj[j]*fj[j]
-        f_tot[1] += -p.mass*p.gravity
+            f_contact += cj[j]*fj[j]
+        f_gravity = np.array([0., -p.mass*p.gravity])
         ov = get_object_vel(s_t)
         fric = (-1*np.sign(ov[0]))*p.mu*cj[2]*fj[2][1]
-        f_tot[0] += fric
+        
+        f_fric = np.array([fric, 0.])
+
+        # get ro: roj in world frame
+        rj = roj + np.tile(box.pose, (3, 1))
+
+        for rji in rj:
+            rj_circ = plt.Circle(rji, box.height/10., fc='yellow')
+            plt.gca().add_patch(rj_circ)
         
         box_pose = get_object_pos(s_t)
         gripper1_pose = get_gripper1_pos(s_t)
@@ -374,7 +382,13 @@ def visualize_result(S0, s0, objects, goal, outfile):
         goal_circ = plt.Circle(goal[1][:2], box.height/10., fc='g')
         plt.gca().add_patch(goal_circ)
 
-        plt.arrow(box_pose[0] + box.width/2., box_pose[1] + box.height/2., f_tot[0], f_tot[1], 
+        plt.arrow(box_pose[0] + box.width/2., box_pose[1] + box.height/2., f_contact[0], f_contact[1], 
+            head_width=0.5, head_length=1., fc='k', ec='k')
+
+        plt.arrow(box_pose[0] + box.width/2., box_pose[1] + box.height/2., f_fric[0], f_fric[1], 
+            head_width=0.5, head_length=1., fc='k', ec='k')
+
+        plt.arrow(box_pose[0] + box.width/2., box_pose[1] + box.height/2., f_gravity[0], f_gravity[1], 
             head_width=0.5, head_length=1., fc='k', ec='k')
 
         plt.xlim((-10., 50))

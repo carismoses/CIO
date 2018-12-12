@@ -14,7 +14,7 @@ from CIO import visualize_result
 accel_lamb_test_params = [1.e-3,]
 # ci, phys, task
 # phase_weights_test = [[(0.0, 0.1, 1.0), (0.0, 1.0, 1.0)],]
-phase_weights_test = [[(0.1, 0.1, 1.0), (10., 1.0, 1.0)]]
+phase_weights_test = [[(0.1, 0.1, 1.0), (10., 1.0, 0.0)]]
 cont_lamb_test_params = [1.e-7]#, 1.e-5, 1.e-1, 0.0]
 cone_lamb_test_params = [1.e-3]#, 1.e-2, 1.e-1]
 
@@ -99,7 +99,7 @@ def visualize_from_file(old_file_name, file_line_num):
     paramClass = p.Params(test_params, num_moveable_objects)
     p.set_global_params(paramClass)
 
-    visualize_result(S0, s0, objects, goal, 'loaded.gif')
+    visualize_result(S0, s0, objects, goal, 'loaded_{}_{}.gif'.format(old_file_name, file_line_num))
 
 
 # TODO: should also return parameters used to ensure that the same parameters are used in the restart
