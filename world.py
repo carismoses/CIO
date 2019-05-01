@@ -1,6 +1,26 @@
 import pdb
 import numpy as np
 from util import *
+from collections import namedtuple
+
+Pose = namedtuple('Pose', 'x y theta')
+Velocity = namedtuple('Velocity', 'x y theta')
+
+def init_vars(world, p):
+    s0 = np.array([])
+
+    # fill in object poses and velocities
+    for object in world.get_dynamic_objects():
+        s0 = np.concatenate([s0,object.pose])
+        s0 = np.concatenate([s0,object.vel])
+
+    # fill in contact info
+    for cont in world.contact_state:
+        s0 = np.concatenate([s0,cont.f])
+        s0 = np.concatenate([s0,cont.ro])
+        s0 = np.concatenate([s0,[cont.c]])
+
+    return s0
 
 class WorldTraj(object):
     def __init__(self, s0, S, world, p):
@@ -25,7 +45,7 @@ class WorldTraj(object):
     # e_H is the shortest distance between roj and the contact surfaces
     def calc_e(self, s, t, world):
         box = world.manipulated_objects[0]
-        o = box.pose
+        o = np.array([box.pose.x, box.pose.y])
 
         # get ro: roj in world frame
         _, roj, _ = get_contact_info(s,self.p)
@@ -48,11 +68,30 @@ class WorldTraj(object):
 
         return e_O, e_H
 
+class ContactState(object):
+    def __init__(self, cont_object, manip_object, f=[0.0, 0.0], ro=[0.0, 0.0], c=0.5):
+        self.cont_object = cont_object
+        self.manip_object = manip_object
+        self.f = f
+        self.ro = ro
+        self.c = c
+
 class World(object):
-    def __init__(self, ground=None, manipulated_objects=[], hands=[]):
+    def __init__(self, ground=None, manipulated_objects=[], hands=[], contact_state=[]):
         self.ground = ground
         self.manipulated_objects = manipulated_objects
         self.hands = hands
+        self.contact_state = contact_state
+        self.number_objects()
+
+    # objects that can make contact need a contact index
+    # objects that are dynamic need a pose index
+    def number_objects(self):
+        for (i,cont) in enumerate(self.contact_state):
+            cont.cont_object.contact_index = i
+
+        for (i,dyn_obj) in enumerate(self.get_dynamic_objects()):
+            dyn_obj.pose_index = i
 
     def get_num_all_objects(self):
         return 1 + len(self.manipulated_objects) + len(self.hands)
@@ -74,27 +113,24 @@ class World(object):
 
 # world origin is left bottom with 0 deg being along the x-axis (+ going ccw), all poses are in world frame
 class Object(object):
-    def __init__(self, pose = (0.0,0.0), angle = 0.0, vel = (0.0, 0.0, 0.0), actuated = False, \
-                pose_index = None, contact_index = None, step_size = 0.5):
-        self.pose = np.array(pose)
-        self.angle = np.array(angle)
-        self.vel = np.array(vel)
-        self.actuated = actuated
-        self.pose_index = pose_index
-        self.contact_index = contact_index
+    def __init__(self, pose = Pose(0.0,0.0,0.0), vel = Velocity(0.0, 0.0, 0.0), step_size = 0.5):
+        self.pose = pose
+        self.vel = vel
         self.step_size = step_size
         self.rad_bounds = 1e-1
+
+        # set when world is initialized
+        self.pose_index = None
+        self.contact_index = None
 
     def step(self, S, t, p):
         if self.pose_index != None:
             if t == 0:
-                self.pose = S[6*self.pose_index:6*self.pose_index+2]
-                self.angle = S[6*self.pose_index+2]
-                self.vel = S[6*self.pose_index+3:6*self.pose_index+7]
+                self.pose = Pose(*S[6*self.pose_index:6*self.pose_index+3])
+                self.vel = Velocity(*S[6*self.pose_index+3:6*self.pose_index+6])
             else:
-                self.pose = S[6*self.pose_index+(t-1)*p.len_s_aug:6*self.pose_index+(t-1)*p.len_s_aug+2]
-                self.angle = S[6*self.pose_index+(t-1)*p.len_s_aug+2]
-                self.vel = S[6*self.pose_index+(t-1)*p.len_s_aug+3:6*self.pose_index+(t-1)*p.len_s_aug+7]
+                self.pose = Pose(*S[6*self.pose_index+(t-1)*p.len_s_aug:6*self.pose_index+(t-1)*p.len_s_aug+3])
+                self.vel = Velocity(*S[6*self.pose_index+(t-1)*p.len_s_aug+3:6*self.pose_index+(t-1)*p.len_s_aug+6])
 
     def check_collisions(self, col_object):
         pts = self.discretize()
@@ -106,43 +142,42 @@ class Object(object):
         return max_col_dist
 
 class Line(Object):
-    def __init__(self, pose = (0.0,0.0), angle = 0.0, length = 10.0, vel = (0.0, 0.0, 0.0), \
-                actuated = False, pose_index = None, contact_index = None, step_size = 0.5):
+    def __init__(self, length = 10.0, pose = Pose(0.0,0.0,0.0), vel = Velocity(0.0, 0.0, 0.0), step_size = 0.5):
         self.length = length
-        super(Line,self).__init__(pose, angle, vel, actuated, pose_index, contact_index,\
-                                    step_size)
+        super(Line,self).__init__(pose, vel, step_size)
 
     def discretize(self):
         N_points = np.floor(self.length/self.step_size) + 1
         points = np.array((N_points,2))
         points[0,:], points[N_points-1,:] = self.get_endpoints()
         for i in range(1,N_points-1):
-            points[i,:] = points[i-1,:] + self.step_size*np.array((np.cos(self.angle), np.sin(self.angle)))
+            points[i,:] = points[i-1,:] + self.step_size*np.array((np.cos(self.pose.theta), np.sin(self.angle)))
         return points
 
     def check_inside(self, point):
         pass #TODO
 
     def get_endpoints(self):
-        endpoint0 = self.pose
-        endpoint1 = self.pose + self.length*np.array((np.cos(self.angle), np.sin(self.angle)))
+        p0 = np.array([self.pose.x, self.pose.y])
+        endpoint0 = p0
+        endpoint1 = p0 + self.length*np.array((np.cos(self.pose.theta), np.sin(self.pose.theta)))
         return (endpoint0, endpoint1)
 
     def line_eqn(self):
         # check for near straight lines
         # line close to horizontal
-        if abs(self.angle) < self.rad_bounds or abs(self.angle - np.pi) < self.rad_bounds:
+        if abs(self.pose.theta) < self.rad_bounds or abs(self.pose.theta - np.pi) < self.rad_bounds:
             a = 0.
             b = 1.
-            c = -self.pose[1]
+            c = -self.pose.y
         # line close to vertical
-        elif abs(self.angle - np.pi/2.) < self.rad_bounds or abs(self.angle - 3.*np.pi/2.) < self.rad_bounds:
+        elif abs(self.pose.theta - np.pi/2.) < self.rad_bounds or abs(self.pose.theta - 3.*np.pi/2.) < self.rad_bounds:
             a = 1.
             b = 0.
-            c = -self.pose[0]
+            c = -self.pose.x
         else:
-            slope = np.sin(self.angle)/np.cos(self.angle)
-            int = self.pose[1] - slope*self.pose[0]
+            slope = np.sin(self.pose.theta)/np.cos(self.pose.theta)
+            int = self.pose.y - slope*self.pose.x
             a = -slope
             b = 1
             c = -int
@@ -172,14 +207,12 @@ class Line(Object):
         return proj_point
 
 class Rectangle(Object):
-    def __init__(self, pose = (0.0,0.0), angle = 0.0, width = 10.0, height = 10.0, vel = (0.0, 0.0, 0.0), \
-                actuated = False, pose_index = None, contact_index = None, step_size = 0.5):
+    def __init__(self, width = 10.0, height = 10.0, pose = Pose(0.0,0.0,0.0), \
+                vel = Velocity(0.0, 0.0, 0.0), step_size = 0.5):
         self.width = width
         self.height = height
-        super(Rectangle,self).__init__(pose, angle, vel, actuated, pose_index, contact_index,\
-                                        step_size)
+        super(Rectangle,self).__init__(pose, vel, step_size)
         self.lines = self.make_lines() # rectangles are made up of 4 line objects
-
 
     def discretize(self):
         pass#TODO
@@ -191,7 +224,7 @@ class Rectangle(Object):
     def make_lines(self):
         lines = []
         pose = self.pose
-        angle = self.angle
+        angle = self.pose.theta
         length = self.height
         for i in range(4):
             line = Line(pose, angle, length)
@@ -222,11 +255,10 @@ class Rectangle(Object):
 
 
 class Circle(Object):
-    def __init__(self, pose = (0.0,0.0), angle = 0., radius = 10.0,  vel = (0.0, 0.0, 0.0), \
-                actuated = False, pose_index = None, contact_index = None, step_size = 0.5):
+    def __init__(self, radius = 10.0, pose = Pose(0.0,0.0,0.0), vel = Velocity(0.0, 0.0, 0.0), \
+                pose_index = None, contact_index = None, step_size = 0.5):
         self.radius = radius
-        super(Circle,self).__init__(pose, angle, vel, actuated, pose_index, contact_index,\
-                                        step_size)
+        super(Circle,self).__init__(pose, vel, step_size)
 
     def discretize(self):
         pass#TODO
@@ -237,10 +269,10 @@ class Circle(Object):
     # return the closest projected point out of all rect surfaces
     def project_point(self, point):
 
-        origin_to_point = np.subtract(point[:2], self.pose[:2])
+        origin_to_point = np.subtract(point[:2], np.array([self.pose.x,self.pose.y]))
         origin_to_point /= np.linalg.norm(origin_to_point)
 
-        closest_point = self.pose + (origin_to_point * self.radius)
+        closest_point = np.array([self.pose.x, self.pose.x]) + (origin_to_point * self.radius)
 
         return closest_point
 

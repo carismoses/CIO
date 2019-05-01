@@ -1,51 +1,34 @@
 import numpy as np
-from world import World, Line, Rectangle, Circle
+from world import World, Line, Rectangle, Circle, ContactState, init_vars, Pose
+from params import Params
+from util import add_noise
+from CIO import visualize_result, CIO
 
+import pdb; pdb.set_trace()
 # ground: origin is left
-ground = Line((0.0, 0.0), 0.0, 30.0, contact_index = 2)
+ground = Line(length=30.0, pose=Pose(0.0,0.0,0.0))
 
 # circle: origin is center of the circle
 rad = 5.0
-box = Circle(pose=(5.0, rad), angle=0.0, radius=rad, vel = (0.0, 0.0, 0.0), pose_index = 2)
+box = Circle(radius=rad, pose=Pose(5.0,rad,0.0))
 # box: origin is left bottom of box
-#box = Rectangle((5.0, 0.0), np.pi/2, 10.0, 10.0, vel = (0.0, 0.0, 0.0), pose_index = 2)
+#box = Rectangle((5.0, 0.0), np.pi/2, 10.0, 10.0, vel = (0.0, 0.0, 0.0))
 
 # gripper1: origin is bottom of line
-gripper1 = Line((0.0, 20.0), np.pi/2, 2.0, pose_index = 0, contact_index = 0,\
-                actuated = True)
+gripper1 = Line(length=2.0, pose=Pose(0.0, 20.0,np.pi/2))
 
 # gripper2: origin is bottom of line
-gripper2 = Line((10.0, 20.0), np.pi/2, 2.0, pose_index = 1, contact_index = 1,\
-                actuated = True)
-
-world = World(ground=ground, manipulated_objects=[box], hands=[gripper1, gripper2])
-
-from params import Params
-p = Params(world)
-
-# create the initial system state: s0
-s0 = np.zeros(p.len_s)
-
-# fill in object poses and velocities
-for object in world.get_dynamic_objects():
-    if object.pose_index != None:
-        s0[6*object.pose_index:6*object.pose_index+2] = object.pose
-        s0[6*object.pose_index+2] = object.angle
-        s0[6*object.pose_index+3:6*object.pose_index+6] = object.vel
+gripper2 = Line(length=2.0, pose=Pose(10.0, 20.0,np.pi/2))
 
 # initial contact information (just in contact with the ground):
-# [fxj fyj rOxj rOyj cj for j in N]
-# j = 0 gripper 1 contact
-# j = 1 gripper 2 contact
-# j = 2 ground contact
-# rO is in object (box) frame
-con0 = [0.0, 0.0,  -5.0, 10.0, 1.0] # gripper1
-con1 = [0.0, 0.0, 5.0, 10.0, 1.0] # gripper2
-con2 = [0.0, 10.0,  0.0, -5.0, 1.0] # ground
+con0 = ContactState(gripper1, box, f=[0.0, 0.0], ro=[-5.0, 10.0], c=.5)
+con1 = ContactState(gripper2, box, f=[0.0, 0.0], ro=[5.0, 10.0], c=.5)
+con2 = ContactState(ground, box, f=[0.0, 10.0], ro=[0.0, -5.0], c=.5)
 
-s0[18:p.len_s] = (con0 + con1 + con2)
+world = World(ground=ground, manipulated_objects=[box], hands=[gripper1, gripper2], contact_state=[con0, con1, con2])
 
-from util import add_noise
+p = Params(world)
+s0 = init_vars(world, p)
 
 # initialize traj to all be the same as the starting state
 S0 = np.zeros(p.len_S)
@@ -56,9 +39,8 @@ add_noise(S0);
 
 goal = ("box", (50.0, rad, np.pi/2))
 
-from CIO import visualize_result
-visualize_result(S0, s0, world, goal, p, 'initial.gif')
+
+#visualize_result(S0, s0, world, goal, p, 'initial.gif')
 open('initial.gif');
 
-from CIO import CIO
 phase_info = CIO(goal, world, s0, S0, p)

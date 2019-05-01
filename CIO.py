@@ -197,7 +197,7 @@ def CIO(goal, world, s0, S0, p, single=False):
         print('BEGINNING PHASE:', phase)
         p.print_phase_weights(phase)
         res = minimize(fun=L, x0=x_init, args=(s0, world, goal, p, phase), \
-                method='L-BFGS-B', bounds=bounds, options={'eps': 1.e-2}, callback=callback)
+                method='L-BFGS-B', bounds=bounds, options={'eps': 10.e-3}, callback=callback)
         x_final = res['x']
         nit = res['nit']
         final_cost = res['fun']
