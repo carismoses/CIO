@@ -132,26 +132,23 @@ def L_task(s, goal, t, p):
     return accel_cost + task_cost
 
 #### MAIN OBJECTIVE FUNCTION ####
-def L(S, s0, world, goal, p, phase=0):
+def L(S, goal, world, p, phase=0):
     global cis, physs, kinems, tasks
-    # augment by calculating the accelerations from the velocities
-    # interpolate all of the decision vars to get a finer trajectory disretization
-    S_aug = augment_s(s0, S, p)
 
     # world traj stores current object information used to calculate e vars for L_CI
-    world_traj = WorldTraj(s0, S_aug, world, p)
+    world_traj = WorldTraj(S, world, p)
     tot_cost = 0.0
     cis, physs, kinems, tasks = 0.0, 0.0, 0.0, 0.0
 
     for t in range(1,p.T_steps):
         # s_tm1 is s from t-1
         if t == 1:
-            s_tm1 = s0
+            s_tm1 = world.s0
         else:
-            s_tm1 = get_s(S_aug, t-2, p)
+            s_tm1 = get_s(world_traj.S, t-2, p)
 
         world_traj.step(t)
-        s_aug_t = get_s(S_aug,t-1, p)
+        s_aug_t = get_s(world_traj.S,t-1, p)
 
         ci = p.phase_weights[phase].w_CI*L_CI(s_aug_t, t, world, world_traj, p)
         phys = p.phase_weights[phase].w_physics*L_physics(s_aug_t, p)
@@ -170,33 +167,35 @@ def L(S, s0, world, goal, p, phase=0):
     return tot_cost
 
 #### MAIN FUNCTION ####
-def CIO(goal, world, s0, S0, p, single=False):
+def CIO(goal, world, p, single=False):
     global iter
 
     if single:
         # FOR TESTING A SINGLE traj
         pdb.set_trace()
-        x = L(S0, s0, world, goal, p)
+        S = world.traj_func(world, goal, p)
+        x = L(S, goal, world, p)
         print_final(cis, kinems, physs, tasks)
         return {}
 
     print('Cost of initial trajectory:')
-    x = L(S0, s0, world, goal, p)
+    S = world.traj_func(world, goal, p)
+    x = L(S, goal, world, p)
     print_final(cis, kinems, physs, tasks)
 
-    visualize_result(S0, s0, world, goal, p, 'initial.gif')
+    visualize_result(S, world.s0, world, goal, p, 'initial.gif')
 
     bounds = get_bounds(p)
 
     ret_info = {}
-    x_init = S0
+    x_init = S
     for phase in range(len(p.phase_weights)):
         iter = 0
         if phase == 0:
             x_init = add_noise(x_init)
         print('BEGINNING PHASE:', phase)
         p.print_phase_weights(phase)
-        res = minimize(fun=L, x0=x_init, args=(s0, world, goal, p, phase), \
+        res = minimize(fun=L, x0=x_init, args=(goal, world, p, phase), \
                 method='L-BFGS-B', bounds=bounds, options={'eps': 10.e-3}, callback=callback)
         x_final = res['x']
         nit = res['nit']

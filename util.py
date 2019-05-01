@@ -388,7 +388,7 @@ def visualize_result(S0, s0, world, goal, p, outfile):
 
         gripper1_pose = get_gripper1_pos(s_t)
         gripper2_pose = get_gripper2_pos(s_t)
-
+        
         try:
             box_rect = plt.Rectangle(box_pose[:2], box.width, box.height, fc='r')
             plt.gca().add_patch(box_rect)

@@ -6,38 +6,23 @@ from collections import namedtuple
 Pose = namedtuple('Pose', 'x y theta')
 Velocity = namedtuple('Velocity', 'x y theta')
 
-def init_vars(world, p):
-    s0 = np.array([])
-
-    # fill in object poses and velocities
-    for object in world.get_dynamic_objects():
-        s0 = np.concatenate([s0,object.pose])
-        s0 = np.concatenate([s0,object.vel])
-
-    # fill in contact info
-    for cont in world.contact_state:
-        s0 = np.concatenate([s0,cont.f])
-        s0 = np.concatenate([s0,cont.ro])
-        s0 = np.concatenate([s0,[cont.c]])
-
-    return s0
-
 class WorldTraj(object):
-    def __init__(self, s0, S, world, p):
-        self.s0 = s0
-        self.S = S
+    def __init__(self, S, world, p):
+        # augment by calculating the accelerations from the velocities
+        # interpolate all of the decision vars to get a finer trajectory disretization
+        self.S = augment_s(world.s0, S, p)
         self.world = world
         self.p = p
         self.step(0)
 
         # initialize to zero and calulate e for t=0
         self.e_Os, self.e_Hs = np.zeros((self.p.N, self.p.T_steps, 2)), np.zeros((self.p.N, self.p.T_steps, 2))
-        self.calc_e(s0, 0, world)
+        self.calc_e(world.s0, 0, world)
 
     def step(self, t):
         for object in self.world.get_contact_objects():
             if t == 0:
-                object.step(self.s0,t,self.p)
+                object.step(self.world.s0,t,self.p)
             else:
                 object.step(self.S,t,self.p)
 
@@ -76,13 +61,39 @@ class ContactState(object):
         self.ro = ro
         self.c = c
 
+def stationary_traj(world, goal, p):
+    S = np.zeros(p.len_S)
+    for k in range(p.K):
+        S[k*p.len_s:k*p.len_s+p.len_s] = world.get_vars()
+    S = add_noise(S)
+    return S
+
 class World(object):
-    def __init__(self, ground=None, manipulated_objects=[], hands=[], contact_state=[]):
+    def __init__(self, ground=None, manipulated_objects=[], hands=[], contact_state=[], \
+                    traj_func=stationary_traj):
         self.ground = ground
         self.manipulated_objects = manipulated_objects
         self.hands = hands
         self.contact_state = contact_state
+        self.traj_func = traj_func
+        self.s0 = self.get_vars()
         self.number_objects()
+
+    def get_vars(self):
+        s0 = np.array([])
+
+        # fill in object poses and velocities
+        for object in self.get_dynamic_objects():
+            s0 = np.concatenate([s0,object.pose])
+            s0 = np.concatenate([s0,object.vel])
+
+        # fill in contact info
+        for cont in self.contact_state:
+            s0 = np.concatenate([s0,cont.f])
+            s0 = np.concatenate([s0,cont.ro])
+            s0 = np.concatenate([s0,[cont.c]])
+
+        return s0
 
     # objects that can make contact need a contact index
     # objects that are dynamic need a pose index
