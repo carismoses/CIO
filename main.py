@@ -1,5 +1,5 @@
 import numpy as np
-from world import Line, Rectangle, Circle
+from world import World, Line, Rectangle, Circle
 
 # ground: origin is left
 ground = Line((0.0, 0.0), 0.0, 30.0, contact_index = 2)
@@ -18,17 +18,16 @@ gripper1 = Line((0.0, 20.0), np.pi/2, 2.0, pose_index = 0, contact_index = 0,\
 gripper2 = Line((10.0, 20.0), np.pi/2, 2.0, pose_index = 1, contact_index = 1,\
                 actuated = True)
 
-objects = [ground, box, gripper1, gripper2]
+world = World(ground=ground, manipulated_objects=[box], hands=[gripper1, gripper2])
 
-num_moveable_objects = len(objects) - 1 # don't count the ground
 from params import Params
-p = Params(num_moveable_objects)
+p = Params(world)
 
 # create the initial system state: s0
 s0 = np.zeros(p.len_s)
 
 # fill in object poses and velocities
-for object in objects:
+for object in world.get_dynamic_objects():
     if object.pose_index != None:
         s0[6*object.pose_index:6*object.pose_index+2] = object.pose
         s0[6*object.pose_index+2] = object.angle
@@ -58,8 +57,8 @@ add_noise(S0);
 goal = ("box", (50.0, rad, np.pi/2))
 
 from CIO import visualize_result
-visualize_result(S0, s0, objects, goal, p, 'initial.gif')
+visualize_result(S0, s0, world, goal, p, 'initial.gif')
 open('initial.gif');
 
 from CIO import CIO
-phase_info = CIO(goal, objects, s0, S0, p)
+phase_info = CIO(goal, world, s0, S0, p)

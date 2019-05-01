@@ -25,8 +25,8 @@ def get_normals(angles,p):
     return nj
 
 #### OBJECTIVE FUNCTIONS ####
-def L_CI(s, t, objects, world_traj, p):
-    e_O, e_H = world_traj.calc_e(s, t, objects)
+def L_CI(s, t, world, world_traj, p):
+    e_O, e_H = world_traj.calc_e(s, t, world)
     e_O_tm1, e_H_tm1 = world_traj.e_Os[:,t-1,:], world_traj.e_Hs[:,t-1,:]
     _, _, cj = get_contact_info(s,p)
 
@@ -43,25 +43,24 @@ def L_CI(s, t, objects, world_traj, p):
 
 # includes 1) limits on finger and arm joint angles (doesn't apply)
 #          2) distance from fingertips to palms limit (doesn't apply)
-#          3) TODO: collisions between fingers
-def L_kinematics(s, objects, p):
+#          3) collisions between fingers
+def L_kinematics(s, world, p):
     cost = 0
     # penalize collisions between all objects
+    all_objects = world.get_all_objects()
     obj_num = 0
-    while obj_num < len(objects):
-        for col_object in objects[obj_num+1:]:
-            col_dist = objects[obj_num].check_collisions(col_object)
+    while obj_num < world.get_num_all_objects():
+        for col_object in all_objects[obj_num+1:]:
+            col_dist = all_objects[obj_num].check_collisions(col_object)
             cost += col_lamb*col_dist
             obj_num += 1
     return kin_lamb*cost
 
-def L_physics(s, objects,p):
+def L_physics(s, p):
     # get relevant state info
     fj, roj, cj = get_contact_info(s,p)
     ov = get_object_vel(s)
     oa = get_object_accel(s)
-    ground, _, gripper1, gripper2 = objects
-    contact_objects = [gripper1, gripper2, ground]
 
     # calculate sum of forces on object
     # calc frictional force only if object is moving in x direction
@@ -91,11 +90,10 @@ def L_physics(s, objects,p):
     cost = np.linalg.norm(f_tot - p_dot)**2 #+ np.linalg.norm(m_tot - l_dot)**2
     return cost
 
-def L_cone(s, objects, p):
+def L_cone(s, world, p):
     # calc L_cone
     fj, _, _ = get_contact_info(s,p)
-    ground, _, gripper1, gripper2 = objects
-    contact_objects = [gripper1, gripper2, ground]
+    contact_objects = world.get_contact_objects()
     cost = 0.0
     # get contact surface angles
     angles = np.zeros((p.N))
@@ -144,14 +142,14 @@ def L_accel(s, p):
     return cost
 
 #### MAIN OBJECTIVE FUNCTION ####
-def L(S, s0, objects, goal, p, phase_weights):
+def L(S, s0, world, goal, p, phase_weights):
     global cis, kinems, physs, coness, conts, tasks, accels
     # augment by calculating the accelerations from the velocities
     # interpolate all of the decision vars to get a finer trajectory disretization
     S_aug = augment_s(s0, S, p)
 
     # world traj stores current object information used to calculate e vars for L_CI
-    world_traj = WorldTraj(s0, S_aug, objects, p)
+    world_traj = WorldTraj(s0, S_aug, world, p)
     tot_cost = 0.0
     cis, kinems, physs, coness, conts, tasks, accels = \
                             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
@@ -168,10 +166,10 @@ def L(S, s0, objects, goal, p, phase_weights):
 
         wci, wphys, wtask = phase_weights
 
-        ci = L_CI(s_aug_t, t, objects, world_traj, p)
-        kinem = 0.#L_kinematics(s_aug_t, objects)
-        phys = L_physics(s_aug_t, objects, p)
-        cones = L_cone(s_aug_t, objects, p)
+        ci = L_CI(s_aug_t, t, world, world_traj, p)
+        kinem = 0.#L_kinematics(s_aug_t, world)
+        phys = L_physics(s_aug_t, p)
+        cones = L_cone(s_aug_t, world, p)
         cont = L_contact(s_aug_t, p)
         accel = L_accel(s_aug_t, p)
         task = L_task(s_aug_t, goal, t, p)
@@ -191,21 +189,21 @@ def L(S, s0, objects, goal, p, phase_weights):
     return tot_cost
 
 #### MAIN FUNCTION ####
-def CIO(goal, objects, s0, S0, p, single=False):
+def CIO(goal, world, s0, S0, p, single=False):
     global iter
 
     if single:
         # FOR TESTING A SINGLE traj
         pdb.set_trace()
-        x = L(S0, s0, objects, goal, p, (1.,1.,1.))
+        x = L(S0, s0, world, goal, p, (1.,1.,1.))
         print_final(x)
         return {}
 
     print('Cost of initial trajectory:')
-    x = L(S0, s0, objects, goal, p, (1.,1.,1.))
+    x = L(S0, s0, world, goal, p, (1.,1.,1.))
     print_final(x)
 
-    visualize_result(S0, s0, objects, goal, p, 'initial.gif')
+    visualize_result(S0, s0, world, goal, p, 'initial.gif')
 
     bounds = get_bounds(p)
 
@@ -217,14 +215,14 @@ def CIO(goal, objects, s0, S0, p, single=False):
             x_init = add_noise(x_init)
         phase_weights = p.phase_weights[phase]
         print("PHASE WEIGHTS:", phase_weights)
-        res = minimize(fun=L, x0=x_init, args=(s0, objects, goal, p, phase_weights), \
+        res = minimize(fun=L, x0=x_init, args=(s0, world, goal, p, phase_weights), \
                 method='L-BFGS-B', bounds=bounds, options={'eps': 1.e-2}, callback=callback)
         x_final = res['x']
         nit = res['nit']
         final_cost = res['fun']
 
         #print_result(x_final, s0)
-        visualize_result(x_final, s0, objects, goal, p, 'phase_{}.gif'.format(phase))
+        visualize_result(x_final, s0, world, goal, p, 'phase_{}.gif'.format(phase))
         print_final(final_cost)
         all_final_costs = [cis, kinems, physs, coness, conts, tasks, accels]
         ret_info[phase] = s0, x_final, final_cost, nit, all_final_costs
@@ -329,13 +327,13 @@ def print_result(x, s0):
         print(t, ':\n', contact)
 
 
-def visualize_result(S0, s0, objects, goal, p, outfile):
+def visualize_result(S0, s0, world, goal, p, outfile):
     x_aug = augment_s(s0,S0,p)
+    box = world.manipulated_objects[0]
+    gripper1, gripper2 = world.hands
 
     temp_dirpath = tempfile.mkdtemp()
     image_filenames = []
-
-    ground, box, gripper1, gripper2 = objects
 
     for t in range(p.T_steps+1):
         plt.figure()

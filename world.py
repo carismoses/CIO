@@ -3,19 +3,19 @@ import numpy as np
 from util import *
 
 class WorldTraj(object):
-    def __init__(self, s0, S, objects, p):
+    def __init__(self, s0, S, world, p):
         self.s0 = s0
         self.S = S
-        self.objects = objects
+        self.world = world
         self.p = p
         self.step(0)
 
         # initialize to zero and calulate e for t=0
         self.e_Os, self.e_Hs = np.zeros((self.p.N, self.p.T_steps, 2)), np.zeros((self.p.N, self.p.T_steps, 2))
-        self.calc_e(s0, 0, objects)
+        self.calc_e(s0, 0, world)
 
     def step(self, t):
-        for object in self.objects:
+        for object in self.world.get_contact_objects():
             if t == 0:
                 object.step(self.s0,t,self.p)
             else:
@@ -23,8 +23,8 @@ class WorldTraj(object):
 
     # e_O is the shortest distance between roj and the object
     # e_H is the shortest distance between roj and the contact surfaces
-    def calc_e(self, s, t, objects):
-        _, box, _, _ = objects
+    def calc_e(self, s, t, world):
+        box = world.manipulated_objects[0]
         o = box.pose
 
         # get ro: roj in world frame
@@ -33,7 +33,7 @@ class WorldTraj(object):
 
         # get pi_j: project rj onto all contact surfaces
         pi_j = np.zeros((self.p.N, 2))
-        for object in objects:
+        for object in self.world.get_contact_objects():
             if object.contact_index != None:
                 pi_j[object.contact_index,:] = object.project_point(rj[object.contact_index,:])
 
@@ -47,6 +47,30 @@ class WorldTraj(object):
         self.e_Os[:,t,:], self.e_Hs[:,t,:] = e_O, e_H
 
         return e_O, e_H
+
+class World(object):
+    def __init__(self, ground=None, manipulated_objects=[], hands=[]):
+        self.ground = ground
+        self.manipulated_objects = manipulated_objects
+        self.hands = hands
+
+    def get_num_all_objects(self):
+        return 1 + len(self.manipulated_objects) + len(self.hands)
+
+    def get_all_objects(self):
+        return [self.ground] + self.manipulated_objects + self.hands
+
+    def get_num_dynamic_objects(self):
+        return len(self.manipulated_objects) + len(self.hands)
+
+    def get_dynamic_objects(self):
+        return self.manipulated_objects + self.hands
+
+    def get_num_contact_objects(self):
+        return 1 + len(self.hands)
+
+    def get_contact_objects(self):
+        return self.hands + [self.ground]
 
 # world origin is left bottom with 0 deg being along the x-axis (+ going ccw), all poses are in world frame
 class Object(object):
