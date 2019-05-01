@@ -22,7 +22,7 @@ cone_lamb_test_params = [1.e-3]#, 1.e-2, 1.e-1]
 len_s = 33
 num_ps = 22 # length of output vars to csv that are not part of s0 or Sfinal
 
-fn_prefix = '/Users/tom/phd/CIO/output_files/'
+fn_prefix = '/Users/carismoses/CIO/output_files/'
 fn_suff = '.csv'
 
 p_dummy = p.Params()
