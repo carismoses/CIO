@@ -1,3 +1,4 @@
 *.pyc
 output_files/*
 *.gif
+.ipynb_checkpoints/
