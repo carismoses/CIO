@@ -1,8 +1,13 @@
 import numpy as np
 import pdb
 from scipy.interpolate import BPoly
+import imageio
+import matplotlib.pyplot as plt
+import shutil
+import tempfile
+import os
 
-np.random.seed(0)
+#np.random.seed(0)
 
 #### GET FUNCTIONS ####
 def get_gripper1_pos(s):
@@ -328,3 +333,100 @@ def add_noise(vec):
         vec[j] += np.random.normal(mean, var)
 
     return vec
+
+### FOR PRINTING AND VISUALIZING
+
+def print_step(ci, kinem, phys, task):
+    print('----- step costs ------')
+    print('cis:            ', ci)
+    print('kinematics:     ', kinem)
+    print('physics:        ', phys)
+    print('task:           ', task)
+    print('total:          ', ci + kinem + phys + task)
+
+def print_final(cis, kinems, physs, tasks):
+    print('----- traj costs -----')
+    print('cis:            ', cis)
+    print('kinematics:     ', kinems)
+    print('physics:        ', physs)
+    print('task:           ', tasks)
+    print('TOTAL: ', cis + kinems + physs + tasks)
+
+def visualize_result(S0, s0, world, goal, p, outfile):
+    x_aug = augment_s(s0,S0,p)
+    box = world.manipulated_objects[0]
+    gripper1, gripper2 = world.hands
+
+    temp_dirpath = tempfile.mkdtemp()
+    image_filenames = []
+
+    for t in range(p.T_steps+1):
+        plt.figure()
+
+        if t == 0:
+            s_t = s0
+        else:
+            s_t = get_s(x_aug, t-1, p)
+
+        fj, roj, cj = get_contact_info(s_t,p)
+        f_contact = np.array([0.0, 0.0])
+        for j in range(p.N):
+            f_contact += cj[j]*fj[j]
+        f_gravity = np.array([0., -p.mass*p.gravity])
+        ov = get_object_vel(s_t)
+        fric = (-1*np.sign(ov[0]))*p.mu*cj[2]*fj[2][1]
+
+        f_fric = np.array([fric, 0.])
+
+        box_pose = get_object_pos(s_t)
+        # get ro: roj in world frame
+        rj = roj + np.tile(box_pose[:2], (3, 1))
+
+        for rji, cji in zip(rj, cj):
+            rj_circ = plt.Circle(rji, 1., fc='blue', alpha=cji)
+            plt.gca().add_patch(rj_circ)
+
+        gripper1_pose = get_gripper1_pos(s_t)
+        gripper2_pose = get_gripper2_pos(s_t)
+
+        try:
+            box_rect = plt.Rectangle(box_pose[:2], box.width, box.height, fc='r')
+            plt.gca().add_patch(box_rect)
+        except AttributeError:
+            circ = plt.Circle(box_pose[:2], box.radius, fc='r')
+            plt.gca().add_patch(circ)
+
+        box_origin = plt.Circle(box_pose[:2], 1., fc='gray')
+        plt.gca().add_patch(box_origin)
+
+        gripper1_endpoint = gripper1_pose[:2] + gripper1.length*np.array((np.cos(gripper1_pose[2]), np.sin(gripper1_pose[2])))
+        plt.plot([gripper1_pose[0], gripper1_endpoint[0]], [gripper1_pose[1], gripper1_endpoint[1]], c='black', linewidth=3.)
+
+        gripper2_endpoint = gripper2_pose[:2] + gripper2.length*np.array((np.cos(gripper2_pose[2]), np.sin(gripper2_pose[2])))
+        plt.plot([gripper2_pose[0], gripper2_endpoint[0]], [gripper2_pose[1], gripper2_endpoint[1]], c='black', linewidth=3.)
+
+        goal_circ = plt.Circle(goal[1][:2], 1., fc='g')
+        plt.gca().add_patch(goal_circ)
+
+        plt.arrow(box_pose[0], box_pose[1], f_contact[0], f_contact[1],
+            head_width=0.5, head_length=1., fc='k', ec='k')
+
+        plt.arrow(box_pose[0], box_pose[1], f_fric[0], f_fric[1],
+            head_width=0.5, head_length=1., fc='k', ec='k')
+
+        plt.arrow(box_pose[0], box_pose[1], f_gravity[0], f_gravity[1],
+            head_width=0.5, head_length=1., fc='k', ec='k')
+
+        plt.xlim((-10., 50))
+        plt.ylim((-10., 50))
+        plt.tight_layout()
+        plt.axes().set_aspect('equal', 'datalim')
+        image_filename = os.path.join(temp_dirpath, '{}.png'.format(t))
+        plt.savefig(image_filename)
+        plt.close()
+        image_filenames.append(image_filename)
+    images = [imageio.imread(filename) for filename in image_filenames]
+    imageio.mimsave(outfile, images, fps=10)
+    #print("Wrote out to {}.".format(outfile))
+
+    shutil.rmtree(temp_dirpath)
