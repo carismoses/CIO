@@ -12,12 +12,12 @@ from util import *
 import theano
 import theano.tensor as T
 from theano.ifelse import ifelse
-import params as p
+from params import Params
 
 verbose_step = False
 
 #### SURFACE NORMALS ####
-def get_normals(angles):
+def get_normals(angles,p):
     nj = np.zeros((p.N, 2))
     for j in range(p.N):
         norm_angle = angles[j] + np.pi/2
@@ -25,10 +25,10 @@ def get_normals(angles):
     return nj
 
 #### OBJECTIVE FUNCTIONS ####
-def L_CI(s, t, objects, world_traj):
+def L_CI(s, t, objects, world_traj, p):
     e_O, e_H = world_traj.calc_e(s, t, objects)
     e_O_tm1, e_H_tm1 = world_traj.e_Os[:,t-1,:], world_traj.e_Hs[:,t-1,:]
-    _, _, cj = get_contact_info(s)
+    _, _, cj = get_contact_info(s,p)
 
     # calculate the edots
     e_O_dot = calc_deriv(e_O, e_O_tm1, p.delT)
@@ -44,7 +44,7 @@ def L_CI(s, t, objects, world_traj):
 # includes 1) limits on finger and arm joint angles (doesn't apply)
 #          2) distance from fingertips to palms limit (doesn't apply)
 #          3) TODO: collisions between fingers
-def L_kinematics(s, objects):
+def L_kinematics(s, objects, p):
     cost = 0
     # penalize collisions between all objects
     obj_num = 0
@@ -55,9 +55,9 @@ def L_kinematics(s, objects):
             obj_num += 1
     return kin_lamb*cost
 
-def L_physics(s, objects):
+def L_physics(s, objects,p):
     # get relevant state info
-    fj, roj, cj = get_contact_info(s)
+    fj, roj, cj = get_contact_info(s,p)
     ov = get_object_vel(s)
     oa = get_object_accel(s)
     ground, _, gripper1, gripper2 = objects
@@ -91,9 +91,9 @@ def L_physics(s, objects):
     cost = np.linalg.norm(f_tot - p_dot)**2 #+ np.linalg.norm(m_tot - l_dot)**2
     return cost
 
-def L_cone(s, objects):
+def L_cone(s, objects, p):
     # calc L_cone
-    fj, _, _ = get_contact_info(s)
+    fj, _, _ = get_contact_info(s,p)
     ground, _, gripper1, gripper2 = objects
     contact_objects = [gripper1, gripper2, ground]
     cost = 0.0
@@ -104,7 +104,7 @@ def L_cone(s, objects):
         # will need to change if have different shaped contact surfaces
         angles[j] = contact_objects[j].angle
     # get unit normal to contact surfaces at pi_j using surface line
-    nj = get_normals(angles)
+    nj = get_normals(angles, p)
     for j in range(p.N):
         cosangle_num = np.dot(fj[j], nj[j,:])
         cosangle_den = np.dot(np.linalg.norm(fj[j]), np.linalg.norm(nj[j,:]))
@@ -115,16 +115,16 @@ def L_cone(s, objects):
         cost += max(angle - np.arctan(p.mu), 0)**2
     return p.cone_lamb*cost
 
-def L_contact(s):
+def L_contact(s, p):
     # discourage large contact forces
-    fj, _, _ = get_contact_info(s)
+    fj, _, _ = get_contact_info(s,p)
     cost = 0.
     for j in range(p.N):
         cost += np.linalg.norm(fj[j])**2
     cost = p.cont_lamb*cost
     return cost
 
-def L_task(s, goal, t):
+def L_task(s, goal, t, p):
     # l constraint: get object to desired pos
     I = 1 if t == (p.T_steps-1) else 0
     hb = get_object_pos(s)
@@ -132,7 +132,7 @@ def L_task(s, goal, t):
     cost = I*np.linalg.norm(hb - h_star)**2
     return cost
 
-def L_accel(s):
+def L_accel(s, p):
     # small acceleration constraint (supposed to keep hand accel small, but
     # don't have a central hand so use grippers individually)
     o_dotdot = get_object_accel(s)
@@ -144,14 +144,14 @@ def L_accel(s):
     return cost
 
 #### MAIN OBJECTIVE FUNCTION ####
-def L(S, s0, objects, goal, phase_weights):
+def L(S, s0, objects, goal, p, phase_weights):
     global cis, kinems, physs, coness, conts, tasks, accels
     # augment by calculating the accelerations from the velocities
     # interpolate all of the decision vars to get a finer trajectory disretization
-    S_aug = augment_s(s0, S)
+    S_aug = augment_s(s0, S, p)
 
     # world traj stores current object information used to calculate e vars for L_CI
-    world_traj = WorldTraj(s0, S_aug, objects)
+    world_traj = WorldTraj(s0, S_aug, objects, p)
     tot_cost = 0.0
     cis, kinems, physs, coness, conts, tasks, accels = \
                             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
@@ -161,20 +161,20 @@ def L(S, s0, objects, goal, phase_weights):
         if t == 1:
             s_tm1 = s0
         else:
-            s_tm1 = get_s(S_aug, t-2)
+            s_tm1 = get_s(S_aug, t-2, p)
 
         world_traj.step(t)
-        s_aug_t = get_s(S_aug,t-1)
+        s_aug_t = get_s(S_aug,t-1, p)
 
         wci, wphys, wtask = phase_weights
 
-        ci = L_CI(s_aug_t, t, objects, world_traj)
+        ci = L_CI(s_aug_t, t, objects, world_traj, p)
         kinem = 0.#L_kinematics(s_aug_t, objects)
-        phys = L_physics(s_aug_t, objects)
-        cones = L_cone(s_aug_t, objects)
-        cont = L_contact(s_aug_t)
-        accel = L_accel(s_aug_t)
-        task = L_task(s_aug_t, goal, t)
+        phys = L_physics(s_aug_t, objects, p)
+        cones = L_cone(s_aug_t, objects, p)
+        cont = L_contact(s_aug_t, p)
+        accel = L_accel(s_aug_t, p)
+        task = L_task(s_aug_t, goal, t, p)
         cost = wtask*(task + accel) + wci*ci + wphys*(phys + kinem + cones + cont)
 
         cis += ci
@@ -191,41 +191,40 @@ def L(S, s0, objects, goal, phase_weights):
     return tot_cost
 
 #### MAIN FUNCTION ####
-def CIO(goal, objects, s0, S0, single=False):
+def CIO(goal, objects, s0, S0, p, single=False):
     global iter
 
     if single:
         # FOR TESTING A SINGLE traj
         pdb.set_trace()
-        x = L(S0, s0, objects, goal, (1.,1.,1.))
+        x = L(S0, s0, objects, goal, p, (1.,1.,1.))
         print_final(x)
         return {}
 
     print('Cost of initial trajectory:')
-    x = L(S0, s0, objects, goal, (1.,1.,1.))
+    x = L(S0, s0, objects, goal, p, (1.,1.,1.))
     print_final(x)
 
-    visualize_result(S0, s0, objects, goal, 'initial.gif')
+    visualize_result(S0, s0, objects, goal, p, 'initial.gif')
 
-    bounds = get_bounds()
+    bounds = get_bounds(p)
 
     ret_info = {}
     x_init = S0
-    if p.phase_weights == []:
-        p.phase_weights = [(1.,1.,1.),]
-    for phase in range(p.start_phase, len(p.phase_weights)):
+    for phase in range(len(p.phase_weights)):
         iter = 0
         if phase == 0:
             x_init = add_noise(x_init)
         phase_weights = p.phase_weights[phase]
         print("PHASE WEIGHTS:", phase_weights)
-        res = minimize(fun=L, x0=x_init, args=(s0, objects, goal, phase_weights), method='L-BFGS-B', bounds=bounds, options={'eps': 1.e-2}, callback=callback)
+        res = minimize(fun=L, x0=x_init, args=(s0, objects, goal, p, phase_weights), \
+                method='L-BFGS-B', bounds=bounds, options={'eps': 1.e-2}, callback=callback)
         x_final = res['x']
         nit = res['nit']
         final_cost = res['fun']
 
         #print_result(x_final, s0)
-        visualize_result(x_final, s0, objects, goal, 'phase_{}.gif'.format(phase))
+        visualize_result(x_final, s0, objects, goal, p, 'phase_{}.gif'.format(phase))
         print_final(final_cost)
         all_final_costs = [cis, kinems, physs, coness, conts, tasks, accels]
         ret_info[phase] = s0, x_final, final_cost, nit, all_final_costs
@@ -261,7 +260,7 @@ def print_final(tot_cost):
 
 def print_result(x, s0):
     # augement the output
-    x_aug = augment_s(s0,x)
+    x_aug = augment_s(s0,x, p)
 
     # pose trajectory
     print('pose trajectory:')
@@ -269,7 +268,7 @@ def print_result(x, s0):
         if t == 0:
             box_pose = get_object_pos(s0)
         else:
-            s_t = get_s(x_aug, t-1)
+            s_t = get_s(x_aug, t-1, p)
             box_pose = get_object_pos(s_t)
         print(box_pose, t)
 
@@ -279,7 +278,7 @@ def print_result(x, s0):
         if t == 0:
             box_vel = get_object_vel(s0)
         else:
-            s_t = get_s(x_aug, t-1)
+            s_t = get_s(x_aug, t-1, p)
             box_vel = get_object_vel(s_t)
         print(box_vel, t)
 
@@ -289,7 +288,7 @@ def print_result(x, s0):
         if t == 0:
             box_accel = get_object_accel(s0)
         else:
-            s_t = get_s(x_aug, t-1)
+            s_t = get_s(x_aug, t-1, p)
             box_accel = get_object_accel(s_t)
         print(box_accel, t)
 
@@ -297,11 +296,11 @@ def print_result(x, s0):
     print('contact forces:')
     for t in range(p.T_steps+1):
         if t == 0:
-            contact_info = get_contact_info(s0)
+            contact_info = get_contact_info(s0,p)
             force = contact_info[0]
         else:
-            s_t = get_s(x_aug, t-1)
-            contact_info = get_contact_info(s_t)
+            s_t = get_s(x_aug, t-1, p)
+            contact_info = get_contact_info(s_t,p)
             force = contact_info[0]
         print(t, ':\n', force)
 
@@ -309,11 +308,11 @@ def print_result(x, s0):
     print('contact poses:')
     for t in range(p.T_steps+1):
         if t == 0:
-            contact_info = get_contact_info(s0)
+            contact_info = get_contact_info(s0,p)
             pos = contact_info[1]
         else:
-            s_t = get_s(x_aug, t-1)
-            contact_info = get_contact_info(s_t)
+            s_t = get_s(x_aug, t-1, p)
+            contact_info = get_contact_info(s_t,p)
             pos = contact_info[1]
         print(t, ':\n', pos)
 
@@ -321,17 +320,17 @@ def print_result(x, s0):
     print('coefficients:')
     for t in range(p.T_steps+1):
         if t == 0:
-            contact_info = get_contact_info(s0)
+            contact_info = get_contact_info(s0,p)
             contact = contact_info[2]
         else:
-            s_t = get_s(x_aug, t-1)
-            contact_info = get_contact_info(s_t)
+            s_t = get_s(x_aug, t-1, p)
+            contact_info = get_contact_info(s_t,p)
             contact = contact_info[2]
         print(t, ':\n', contact)
 
 
-def visualize_result(S0, s0, objects, goal, outfile):
-    x_aug = augment_s(s0,S0)
+def visualize_result(S0, s0, objects, goal, p, outfile):
+    x_aug = augment_s(s0,S0,p)
 
     temp_dirpath = tempfile.mkdtemp()
     image_filenames = []
@@ -344,9 +343,9 @@ def visualize_result(S0, s0, objects, goal, outfile):
         if t == 0:
             s_t = s0
         else:
-            s_t = get_s(x_aug, t-1)
+            s_t = get_s(x_aug, t-1, p)
 
-        fj, roj, cj = get_contact_info(s_t)
+        fj, roj, cj = get_contact_info(s_t,p)
         f_contact = np.array([0.0, 0.0])
         for j in range(p.N):
             f_contact += cj[j]*fj[j]

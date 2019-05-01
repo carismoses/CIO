@@ -1,25 +1,25 @@
 import pdb
 import numpy as np
 from util import *
-import params as p
 
 class WorldTraj(object):
-    def __init__(self, s0, S, objects):
+    def __init__(self, s0, S, objects, p):
         self.s0 = s0
         self.S = S
         self.objects = objects
+        self.p = p
         self.step(0)
 
         # initialize to zero and calulate e for t=0
-        self.e_Os, self.e_Hs = np.zeros((p.N, p.T_steps, 2)), np.zeros((p.N, p.T_steps, 2))
+        self.e_Os, self.e_Hs = np.zeros((self.p.N, self.p.T_steps, 2)), np.zeros((self.p.N, self.p.T_steps, 2))
         self.calc_e(s0, 0, objects)
 
     def step(self, t):
         for object in self.objects:
             if t == 0:
-                object.step(self.s0,t)
+                object.step(self.s0,t,self.p)
             else:
-                object.step(self.S,t)
+                object.step(self.S,t,self.p)
 
     # e_O is the shortest distance between roj and the object
     # e_H is the shortest distance between roj and the contact surfaces
@@ -28,18 +28,18 @@ class WorldTraj(object):
         o = box.pose
 
         # get ro: roj in world frame
-        _, roj, _ = get_contact_info(s)
+        _, roj, _ = get_contact_info(s,self.p)
         rj = roj + np.tile(o, (3, 1))
 
         # get pi_j: project rj onto all contact surfaces
-        pi_j = np.zeros((p.N, 2))
+        pi_j = np.zeros((self.p.N, 2))
         for object in objects:
             if object.contact_index != None:
                 pi_j[object.contact_index,:] = object.project_point(rj[object.contact_index,:])
 
         # get pi_o: project rj onto object
-        pi_o = np.zeros((p.N,2))
-        for j in range(p.N):
+        pi_o = np.zeros((self.p.N,2))
+        for j in range(self.p.N):
             pi_o[j,:] = box.project_point(rj[j,:])
 
         e_O = pi_o - rj
@@ -61,7 +61,7 @@ class Object(object):
         self.step_size = step_size
         self.rad_bounds = 1e-1
 
-    def step(self, S, t):
+    def step(self, S, t, p):
         if self.pose_index != None:
             if t == 0:
                 self.pose = S[6*self.pose_index:6*self.pose_index+2]
