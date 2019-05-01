@@ -201,7 +201,7 @@ def CIO(goal, objects, s0, S0, single=False):
         print_final(x)
         return {}
 
-    print 'Cost of initial trajectory:'
+    print('Cost of initial trajectory:')
     x = L(S0, s0, objects, goal, (1.,1.,1.))
     print_final(x)
 
@@ -218,13 +218,13 @@ def CIO(goal, objects, s0, S0, single=False):
         if phase == 0:
             x_init = add_noise(x_init)
         phase_weights = p.phase_weights[phase]
-        print "PHASE WEIGHTS:", phase_weights
+        print("PHASE WEIGHTS:", phase_weights)
         res = minimize(fun=L, x0=x_init, args=(s0, objects, goal, phase_weights), method='L-BFGS-B', bounds=bounds, options={'eps': 1.e-2}, callback=callback)
         x_final = res['x']
         nit = res['nit']
         final_cost = res['fun']
 
-        print_result(x_final, s0)
+        #print_result(x_final, s0)
         visualize_result(x_final, s0, objects, goal, 'phase_{}.gif'.format(phase))
         print_final(final_cost)
         all_final_costs = [cis, kinems, physs, coness, conts, tasks, accels]
@@ -234,67 +234,67 @@ def CIO(goal, objects, s0, S0, single=False):
 
 def callback(xk):
     global iter
-    print 'iter: ', iter
+    #print('iter: ', iter)
     iter += 1
 
 def print_step(ci, kinem, phys, cones, cont, accel, task):
-    print '----- step costs ------'
-    print 'cis:            ', ci
-    print 'kinematics:     ', kinem
-    print 'physics:        ', phys
-    print 'cone:           ', cones
-    print 'contact forces: ', cont
-    print 'accels:         ', accel
-    print 'task:           ', task
-    print 'total:          ', ci + kinem + phys + cones + cont + accel + task
+    print('----- step costs ------')
+    print('cis:            ', ci)
+    print('kinematics:     ', kinem)
+    print('physics:        ', phys)
+    print('cone:           ', cones)
+    print('contact forces: ', cont)
+    print('accels:         ', accel)
+    print('task:           ', task)
+    print('total:          ', ci + kinem + phys + cones + cont + accel + task)
 
 def print_final(tot_cost):
-    print '----- traj costs -----'
-    print 'cis:            ', cis
-    print 'kinematics:     ', kinems
-    print 'physics:        ', physs
-    print 'cone:           ', coness
-    print 'contact forces: ', conts
-    print 'accels:         ', accels
-    print 'task:           ', tasks
-    print 'TOTAL: ', tot_cost
+    print('----- traj costs -----')
+    print('cis:            ', cis)
+    print('kinematics:     ', kinems)
+    print('physics:        ', physs)
+    print('cone:           ', coness)
+    print('contact forces: ', conts)
+    print('accels:         ', accels)
+    print('task:           ', tasks)
+    print('TOTAL: ', tot_cost)
 
 def print_result(x, s0):
     # augement the output
     x_aug = augment_s(s0,x)
 
     # pose trajectory
-    print 'pose trajectory:'
+    print('pose trajectory:')
     for t in range(p.T_steps+1):
         if t == 0:
             box_pose = get_object_pos(s0)
         else:
             s_t = get_s(x_aug, t-1)
             box_pose = get_object_pos(s_t)
-        print box_pose, t
+        print(box_pose, t)
 
     # velocity trajectory
-    print 'vel trajectory:'
+    print('vel trajectory:')
     for t in range(p.T_steps+1):
         if t == 0:
             box_vel = get_object_vel(s0)
         else:
             s_t = get_s(x_aug, t-1)
             box_vel = get_object_vel(s_t)
-        print box_vel, t
+        print(box_vel, t)
 
     # accel trajectory
-    print 'accel trajectory:'
+    print('accel trajectory:')
     for t in range(p.T_steps+1):
         if t == 0:
             box_accel = get_object_accel(s0)
         else:
             s_t = get_s(x_aug, t-1)
             box_accel = get_object_accel(s_t)
-        print box_accel, t
+        print(box_accel, t)
 
     # contact forces
-    print 'contact forces:'
+    print('contact forces:')
     for t in range(p.T_steps+1):
         if t == 0:
             contact_info = get_contact_info(s0)
@@ -303,10 +303,10 @@ def print_result(x, s0):
             s_t = get_s(x_aug, t-1)
             contact_info = get_contact_info(s_t)
             force = contact_info[0]
-        print t, ':\n', force
+        print(t, ':\n', force)
 
     # contact poses
-    print 'contact poses:'
+    print('contact poses:')
     for t in range(p.T_steps+1):
         if t == 0:
             contact_info = get_contact_info(s0)
@@ -315,10 +315,10 @@ def print_result(x, s0):
             s_t = get_s(x_aug, t-1)
             contact_info = get_contact_info(s_t)
             pos = contact_info[1]
-        print t, ':\n', pos
+        print(t, ':\n', pos)
 
     # contact coefficients
-    print 'coefficients:'
+    print('coefficients:')
     for t in range(p.T_steps+1):
         if t == 0:
             contact_info = get_contact_info(s0)
@@ -327,7 +327,7 @@ def print_result(x, s0):
             s_t = get_s(x_aug, t-1)
             contact_info = get_contact_info(s_t)
             contact = contact_info[2]
-        print t, ':\n', contact
+        print(t, ':\n', contact)
 
 
 def visualize_result(S0, s0, objects, goal, outfile):
@@ -353,7 +353,7 @@ def visualize_result(S0, s0, objects, goal, outfile):
         f_gravity = np.array([0., -p.mass*p.gravity])
         ov = get_object_vel(s_t)
         fric = (-1*np.sign(ov[0]))*p.mu*cj[2]*fj[2][1]
-        
+
         f_fric = np.array([fric, 0.])
 
         box_pose = get_object_pos(s_t)
@@ -363,10 +363,10 @@ def visualize_result(S0, s0, objects, goal, outfile):
         for rji, cji in zip(rj, cj):
             rj_circ = plt.Circle(rji, 1., fc='blue', alpha=cji)
             plt.gca().add_patch(rj_circ)
-        
+
         gripper1_pose = get_gripper1_pos(s_t)
         gripper2_pose = get_gripper2_pos(s_t)
-        
+
         try:
             box_rect = plt.Rectangle(box_pose[:2], box.width, box.height, fc='r')
             plt.gca().add_patch(box_rect)
@@ -386,13 +386,13 @@ def visualize_result(S0, s0, objects, goal, outfile):
         goal_circ = plt.Circle(goal[1][:2], 1., fc='g')
         plt.gca().add_patch(goal_circ)
 
-        plt.arrow(box_pose[0], box_pose[1], f_contact[0], f_contact[1], 
+        plt.arrow(box_pose[0], box_pose[1], f_contact[0], f_contact[1],
             head_width=0.5, head_length=1., fc='k', ec='k')
 
-        plt.arrow(box_pose[0], box_pose[1], f_fric[0], f_fric[1], 
+        plt.arrow(box_pose[0], box_pose[1], f_fric[0], f_fric[1],
             head_width=0.5, head_length=1., fc='k', ec='k')
 
-        plt.arrow(box_pose[0], box_pose[1], f_gravity[0], f_gravity[1], 
+        plt.arrow(box_pose[0], box_pose[1], f_gravity[0], f_gravity[1],
             head_width=0.5, head_length=1., fc='k', ec='k')
 
         plt.xlim((-10., 50))
@@ -401,11 +401,10 @@ def visualize_result(S0, s0, objects, goal, outfile):
         plt.axes().set_aspect('equal', 'datalim')
         image_filename = os.path.join(temp_dirpath, '{}.png'.format(t))
         plt.savefig(image_filename)
+        plt.close()
         image_filenames.append(image_filename)
-
     images = [imageio.imread(filename) for filename in image_filenames]
     imageio.mimsave(outfile, images, fps=10)
-    print "Wrote out to {}.".format(outfile)
+    #print("Wrote out to {}.".format(outfile))
 
     shutil.rmtree(temp_dirpath)
-
