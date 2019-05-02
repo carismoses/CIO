@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import shutil
 import tempfile
 import os
+import world as w
 
 #np.random.seed(0)
 
@@ -352,10 +353,10 @@ def print_final(cis, kinems, physs, tasks):
     print('task:           ', tasks)
     print('TOTAL: ', cis + kinems + physs + tasks)
 
-def visualize_result(S0, s0, world, goal, p, outfile):
-    x_aug = augment_s(s0,S0,p)
-    box = world.manipulated_objects[0]
-    gripper1, gripper2 = world.hands
+def visualize_result(world, goal, p, outfile, S0=None):
+    if S0 is None:
+        S0 = world.traj_func(world, goal, p)
+    world_traj = w.WorldTraj(S0, world, p)
 
     temp_dirpath = tempfile.mkdtemp()
     image_filenames = []
@@ -363,58 +364,54 @@ def visualize_result(S0, s0, world, goal, p, outfile):
     for t in range(p.T_steps+1):
         plt.figure()
 
-        if t == 0:
-            s_t = s0
-        else:
-            s_t = get_s(x_aug, t-1, p)
+        world_traj.step(t)
+        world = world_traj.world
+        object = world.manipulated_objects[0]
 
-        fj, roj, cj = get_contact_info(s_t,p)
         f_contact = np.array([0.0, 0.0])
-        for j in range(p.N):
-            f_contact += cj[j]*fj[j]
+        for cont in world.contact_state.values():
+            f_contact += cont.c*np.array(cont.f)
         f_gravity = np.array([0., -p.mass*p.gravity])
-        ov = get_object_vel(s_t)
-        fric = (-1*np.sign(ov[0]))*p.mu*cj[2]*fj[2][1]
+        ov = object.vel
 
+        ground_c = world.contact_state[world.ground].c
+        ground_f = world.contact_state[world.ground].f[1]
+        fric = (-1*np.sign(ov.x))*p.mu*ground_c*ground_f
         f_fric = np.array([fric, 0.])
 
-        box_pose = get_object_pos(s_t)
-        # get ro: roj in world frame
-        rj = roj + np.tile(box_pose[:2], (3, 1))
+        obj_pose = object.pose
 
-        for rji, cji in zip(rj, cj):
-            rj_circ = plt.Circle(rji, 1., fc='blue', alpha=cji)
+        for cont in world.contact_state.values():
+            # get ro in world frame
+            r = cont.ro + np.array([obj_pose.x, obj_pose.y])
+            rj_circ = plt.Circle(r, 1., fc='blue', alpha=cont.c)
             plt.gca().add_patch(rj_circ)
 
-        gripper1_pose = get_gripper1_pos(s_t)
-        gripper2_pose = get_gripper2_pos(s_t)
-        
         try:
-            box_rect = plt.Rectangle(box_pose[:2], box.width, box.height, fc='r')
-            plt.gca().add_patch(box_rect)
+            rect = plt.Rectangle([obj_pose.x, obj_pose.y], object.width, object.height, fc='r')
+            plt.gca().add_patch(rect)
         except AttributeError:
-            circ = plt.Circle(box_pose[:2], box.radius, fc='r')
+            circ = plt.Circle([obj_pose.x, obj_pose.y], object.radius, fc='r')
             plt.gca().add_patch(circ)
 
-        box_origin = plt.Circle(box_pose[:2], 1., fc='gray')
-        plt.gca().add_patch(box_origin)
+        obj_origin = plt.Circle([obj_pose.x, obj_pose.y], 1., fc='gray')
+        plt.gca().add_patch(obj_origin)
 
-        gripper1_endpoint = gripper1_pose[:2] + gripper1.length*np.array((np.cos(gripper1_pose[2]), np.sin(gripper1_pose[2])))
-        plt.plot([gripper1_pose[0], gripper1_endpoint[0]], [gripper1_pose[1], gripper1_endpoint[1]], c='black', linewidth=3.)
-
-        gripper2_endpoint = gripper2_pose[:2] + gripper2.length*np.array((np.cos(gripper2_pose[2]), np.sin(gripper2_pose[2])))
-        plt.plot([gripper2_pose[0], gripper2_endpoint[0]], [gripper2_pose[1], gripper2_endpoint[1]], c='black', linewidth=3.)
+        for hand in world.hands:
+            hand_endpoint = np.add(np.array([hand.pose.x, hand.pose.y]),
+                            hand.length*np.array((np.cos(hand.pose.y), np.sin(hand.pose.y))))
+            plt.plot([hand.pose.x, hand_endpoint[0]], [hand.pose.y, hand_endpoint[1]], c='black', linewidth=3.)
 
         goal_circ = plt.Circle(goal[1][:2], 1., fc='g')
         plt.gca().add_patch(goal_circ)
 
-        plt.arrow(box_pose[0], box_pose[1], f_contact[0], f_contact[1],
+        plt.arrow(obj_pose.x, obj_pose.y, f_contact[0], f_contact[1],
             head_width=0.5, head_length=1., fc='k', ec='k')
 
-        plt.arrow(box_pose[0], box_pose[1], f_fric[0], f_fric[1],
+        plt.arrow(obj_pose.x, obj_pose.y, f_fric[0], f_fric[1],
             head_width=0.5, head_length=1., fc='k', ec='k')
 
-        plt.arrow(box_pose[0], box_pose[1], f_gravity[0], f_gravity[1],
+        plt.arrow(obj_pose.x, obj_pose.y, f_gravity[0], f_gravity[1],
             head_width=0.5, head_length=1., fc='k', ec='k')
 
         plt.xlim((-10., 50))

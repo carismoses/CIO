@@ -5,6 +5,7 @@ from collections import namedtuple
 
 Pose = namedtuple('Pose', 'x y theta')
 Velocity = namedtuple('Velocity', 'x y theta')
+Contact = namedtuple('Contact', 'f ro c')
 
 class WorldTraj(object):
     def __init__(self, S, world, p):
@@ -38,9 +39,8 @@ class WorldTraj(object):
 
         # get pi_j: project rj onto all contact surfaces
         pi_j = np.zeros((self.p.N, 2))
-        for object in self.world.get_contact_objects():
-            if object.contact_index != None:
-                pi_j[object.contact_index,:] = object.project_point(rj[object.contact_index,:])
+        for (i,cont_obj) in enumerate(self.world.contact_state):
+            pi_j[i,:] = cont_obj.project_point(rj[i,:])
 
         # get pi_o: project rj onto object
         pi_o = np.zeros((self.p.N,2))
@@ -53,14 +53,6 @@ class WorldTraj(object):
 
         return e_O, e_H
 
-class ContactState(object):
-    def __init__(self, cont_object, manip_object, f=[0.0, 0.0], ro=[0.0, 0.0], c=0.5):
-        self.cont_object = cont_object
-        self.manip_object = manip_object
-        self.f = f
-        self.ro = ro
-        self.c = c
-
 def stationary_traj(world, goal, p):
     S = np.zeros(p.len_S)
     for k in range(p.K):
@@ -69,7 +61,7 @@ def stationary_traj(world, goal, p):
     return S
 
 class World(object):
-    def __init__(self, ground=None, manipulated_objects=[], hands=[], contact_state=[], \
+    def __init__(self, ground=None, manipulated_objects=[], hands=[], contact_state={}, \
                     traj_func=stationary_traj):
         self.ground = ground
         self.manipulated_objects = manipulated_objects
@@ -88,18 +80,16 @@ class World(object):
             s0 = np.concatenate([s0,object.vel])
 
         # fill in contact info
-        for cont in self.contact_state:
-            s0 = np.concatenate([s0,cont.f])
-            s0 = np.concatenate([s0,cont.ro])
-            s0 = np.concatenate([s0,[cont.c]])
+        for cont_obj in self.contact_state:
+            s0 = np.concatenate([s0,self.contact_state[cont_obj].f])
+            s0 = np.concatenate([s0,self.contact_state[cont_obj].ro])
+            s0 = np.concatenate([s0,[self.contact_state[cont_obj].c]])
 
         return s0
 
     # objects that can make contact need a contact index
     # objects that are dynamic need a pose index
     def number_objects(self):
-        for (i,cont) in enumerate(self.contact_state):
-            cont.cont_object.contact_index = i
 
         for (i,dyn_obj) in enumerate(self.get_dynamic_objects()):
             dyn_obj.pose_index = i
@@ -132,7 +122,6 @@ class Object(object):
 
         # set when world is initialized
         self.pose_index = None
-        self.contact_index = None
 
     def step(self, S, t, p):
         if self.pose_index != None:
@@ -267,7 +256,7 @@ class Rectangle(Object):
 
 class Circle(Object):
     def __init__(self, radius = 10.0, pose = Pose(0.0,0.0,0.0), vel = Velocity(0.0, 0.0, 0.0), \
-                pose_index = None, contact_index = None, step_size = 0.5):
+                pose_index = None, step_size = 0.5):
         self.radius = radius
         super(Circle,self).__init__(pose, vel, step_size)
 

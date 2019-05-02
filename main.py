@@ -1,5 +1,5 @@
 import numpy as np
-from world import World, Line, Rectangle, Circle, ContactState, Pose
+from world import World, Line, Rectangle, Circle, Contact, Pose
 from params import Params
 from util import add_noise
 from CIO import visualize_result, CIO
@@ -21,13 +21,13 @@ gripper1 = Line(length=2.0, pose=Pose(0.0, 20.0,np.pi/2))
 gripper2 = Line(length=2.0, pose=Pose(10.0, 20.0,np.pi/2))
 
 # initial contact information (just in contact with the ground):
-con0 = ContactState(gripper1, box, f=[0.0, 0.0], ro=[-5.0, 10.0], c=.5)
-con1 = ContactState(gripper2, box, f=[0.0, 0.0], ro=[5.0, 10.0], c=.5)
-con2 = ContactState(ground, box, f=[0.0, 10.0], ro=[0.0, -5.0], c=.5)
+contact_state = {gripper1 : Contact(f=[0.0, 0.0], ro=[-5.0, 10.0], c=.5),
+                 gripper2 : Contact(f=[0.0, 0.0], ro=[5.0, 10.0], c=.5),
+                 ground : Contact(f=[0.0, 10.0], ro=[0.0, -5.0], c=.5)}
 
 goal = ("box", (50.0, rad, np.pi/2))
 
-world = World(ground=ground, manipulated_objects=[box], hands=[gripper1, gripper2], contact_state=[con0, con1, con2])
+world = World(ground=ground, manipulated_objects=[box], hands=[gripper1, gripper2], contact_state=contact_state)
 
 '''
 could replace the above line with
@@ -37,8 +37,7 @@ some_other_function would need to take in (goal, world, p) and return a list of 
 
 p = Params(world)
 
-#visualize_result(S0, s0, world, goal, p, 'initial.gif')
-#open('initial.gif');
+visualize_result(world, goal, p, 'initial.gif')
 
 phase_info = CIO(goal, world, p)
 

@@ -94,7 +94,7 @@ def L_physics(s, p):
 def L_cone(s, world, p):
     # calc L_cone
     fj, _, _ = get_contact_info(s,p)
-    contact_objects = world.get_contact_objects()
+    contact_objects = world.contact_state.keys()
     cost = 0.0
     # get contact surface angles
     angles = np.zeros((p.N))
@@ -183,7 +183,7 @@ def CIO(goal, world, p, single=False):
     x = L(S, goal, world, p)
     print_final(cis, kinems, physs, tasks)
 
-    visualize_result(S, world.s0, world, goal, p, 'initial.gif')
+    visualize_result(world, goal, p, 'initial.gif', S)
 
     bounds = get_bounds(p)
 
@@ -201,7 +201,7 @@ def CIO(goal, world, p, single=False):
         nit = res['nit']
         final_cost = res['fun']
 
-        visualize_result(x_final, s0, world, goal, p, 'phase_{}.gif'.format(phase))
+        visualize_result(world, goal, p, 'phase_{}.gif'.format(phase), x_final)
         print_final(cis, kinems, physs, tasks)
         all_final_costs = [cis, kinems, physs, tasks]
         ret_info[phase] = s0, x_final, final_cost, nit, all_final_costs
