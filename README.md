@@ -1,6 +1,6 @@
 # Contact Invariant Optimization
 
-Dependencies: theano, gitpython
+Dependencies: 
 
 To run:
 1. in test_params.py change the fn_prefix to match where you would like to store output files

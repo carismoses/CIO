@@ -26,8 +26,8 @@ def L(S, goal, world, p, phase=0):
 
         # calculate the contact invariance cost
         cost = 0
-        for j in range(p.N):
-            cost += cj[j]*(np.linalg.norm(e_O[j,:])**2 + np.linalg.norm(e_H[j,:])**2 \
+        for (j,cont) in enumerate(world.contact_state.values()):
+            cost += cont.c*(np.linalg.norm(e_O[j,:])**2 + np.linalg.norm(e_H[j,:])**2 \
                     + np.linalg.norm(e_O_dot[j,:])**2 + np.linalg.norm(e_H_dot)**2)
         return cost
 
@@ -39,7 +39,7 @@ def L(S, goal, world, p, phase=0):
         # any overlap between objects is penalized
         all_objects = world.get_all_objects()
         obj_num = 0
-        while obj_num < world.get_num_all_objects():
+        while obj_num < len(world.get_all_objects()):
             for col_object in all_objects[obj_num+1:]:
                 col_dist = all_objects[obj_num].check_collisions(col_object)
                 cost += col_dist
@@ -47,31 +47,30 @@ def L(S, goal, world, p, phase=0):
         return cost
 
     def L_physics(s, t):
-        # get relevant state info
-        fj, roj, cj = get_contact_info(s,p)
-        ov = get_object_vel(s)
-        oa = get_object_accel(s)
-
         # calculate sum of forces on object
         # calc frictional force only if object is moving in x direction
         f_tot = np.array([0.0, 0.0])
-        for j in range(p.N):
-            f_tot += cj[j]*fj[j]
+        for cont in world.contact_state.values():
+            f_tot += cont.c*np.array(cont.f)
         f_tot[1] += -p.mass*p.gravity
 
-        fric = (-1*np.sign(ov[0]))*p.mu*cj[2]*fj[2][1]
-        f_tot[0] += fric
+        ov = world.manipulated_objects[0].vel
+        ground_c = world.contact_state[world.ground].c
+        ground_f = world.contact_state[world.ground].f[1]
+        fric = (-1*np.sign(ov.x))*p.mu*ground_c*ground_f
+        f_fric = np.array([fric, 0.])
 
         # calc change in linear momentum
+        oa = get_object_accel(s)
         p_dot = p.mass*oa[0:2]
 
-        # calc sum of moments on object (friction acts on COM? gravity does)
-        # TODO: correct calc of I (moment of inertia)
+        # calc sum of moments on object
+        # TODO: correct calc of I (moment of inertia), add moment from friction
         I = p.mass
         m_tot = np.array([0.0,0.0])
-        for j in range(p.N):
-            # transform to be relative to object COM not lower left corner
-            m_tot += np.cross(cj[j]*fj[j], roj[j] + np.array([-5, -5]))
+        for cont in world.contact_state.values():
+            # transform to be relative to object COM
+            m_tot += np.cross(cont.c*np.array(cont.f), np.array(cont.ro))
 
         # calc change in angular momentum
         l_dot = I*oa[2]
@@ -80,12 +79,11 @@ def L(S, goal, world, p, phase=0):
         newton_cost = np.linalg.norm(f_tot - p_dot)**2 #+ np.linalg.norm(m_tot - l_dot)**2
 
         force_reg_cost = 0
-        for j in range(p.N):
-            force_reg_cost += np.linalg.norm(fj[j])**2
+        for cont in world.contact_state.values():
+            force_reg_cost += np.linalg.norm(cont.f)**2
         force_reg_cost = p.lamb*force_reg_cost
 
         # calc L_cone
-        fj, _, _ = get_contact_info(s,p)
         cone_cost = 0.0
         # get contact surface angles
         angles = np.zeros((p.N))
@@ -95,9 +93,9 @@ def L(S, goal, world, p, phase=0):
             angles[j] = cont_obj.pose.theta
         # get unit normal to contact surfaces at pi_j using surface line
         nj = get_normals(angles, p)
-        for j in range(p.N):
-            cosangle_num = np.dot(fj[j], nj[j,:])
-            cosangle_den = np.dot(np.linalg.norm(fj[j]), np.linalg.norm(nj[j,:]))
+        for (j,cont) in enumerate(world.contact_state.values()):
+            cosangle_num = np.dot(cont.f, nj[j,:])
+            cosangle_den = np.dot(np.linalg.norm(cont.f), np.linalg.norm(nj[j,:]))
             if cosangle_den == 0.0: # TODO: is this correct?
                 angle = 0.0
             else:
@@ -109,9 +107,8 @@ def L(S, goal, world, p, phase=0):
     def L_task(s, t):
         # task constraint: get object to desired pos
         I = 1 if t == (p.T_steps-1) else 0
-        hb = get_object_pos(s)
-        h_star = goal[1]
-        task_cost = I*np.linalg.norm(hb - h_star)**2
+        obj_pose = world.manipulated_objects[0].pose
+        task_cost = I*np.linalg.norm(np.subtract(obj_pose, goal))**2
 
         # small acceleration constraint (supposed to keep hand accel small, but
         # don't have a central hand so use grippers individually)
@@ -157,7 +154,7 @@ def CIO(goal, world, p, single=False):
         print_final(*function_costs)
         return {}
 
-    print('Cost of initial trajectory:')
+    print('INITIAL')
     S = world.traj_func(world, goal, p)
     tot_cost = L(S, goal, world, p)
     print_final(*function_costs)

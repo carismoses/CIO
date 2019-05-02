@@ -57,9 +57,9 @@ class Params(object):
         self.T_steps = self.K*self.steps_per_phase
         self.T_final = self.K*self.delT_phase
         # each dynamic object has a 2D pose and vel and each contact surface has 5 associated vars
-        self.len_s = int(6*world.get_num_dynamic_objects() + self.N*5)
+        self.len_s = int(6*len(world.get_dynamic_objects()) + self.N*5)
         # add accelerations of dynamic objects
-        self.len_s_aug = int(self.len_s + 3.*world.get_num_dynamic_objects())
+        self.len_s_aug = int(self.len_s + 3.*len(world.get_dynamic_objects()))
         self.len_S = int(self.len_s*self.K)
         self.len_S_aug = int(self.len_s_aug*self.K*self.steps_per_phase)
 

@@ -169,9 +169,10 @@ def set_contact(c, s):
     return s
 
 #### AUGMENT DECISION VARIABLE ####
-def augment_s(s0, S, p):
+def augment_s(world, S, p):
+    s0 = world.s0
     S_aug = np.zeros(p.len_S_aug)
-
+    
     # perform spline interpolation and get velocities and accelerations for all objects
     # object
     set_funcs = set_object_pos, set_object_vel, set_object_accel
@@ -340,12 +341,12 @@ def add_noise(vec):
 
 ### FOR PRINTING AND VISUALIZING
 def print_final(ci, phys, kinem, task):
-    print('----- traj costs -----')
-    print('CI:             ', ci)
-    print('kinematics:     ', kinem)
-    print('physics:        ', phys)
-    print('task:           ', task)
-    print('TOTAL: ', ci + kinem + phys + task)
+    print('TRAJECTORY COSTS:')
+    print('     CI:             ', ci)
+    print('     kinematics:     ', kinem)
+    print('     physics:        ', phys)
+    print('     task:           ', task)
+    print('  TOTAL: ', ci + kinem + phys + task)
 
 def visualize_result(world, goal, p, outfile, S0=None):
     if S0 is None:
@@ -390,17 +391,21 @@ def visualize_result(world, goal, p, outfile, S0=None):
             circ = plt.Circle([obj_pose.x, obj_pose.y], object.radius, fc='r')
             plt.gca().add_patch(circ)
 
+        '''
+        # plots a circle at the center of the object
         obj_origin = plt.Circle([obj_pose.x, obj_pose.y], 1., fc='gray')
         plt.gca().add_patch(obj_origin)
-
+        '''
         for hand in world.hands:
             hand_endpoint = np.add(np.array([hand.pose.x, hand.pose.y]),
                             hand.length*np.array((np.cos(hand.pose.y), np.sin(hand.pose.y))))
             plt.plot([hand.pose.x, hand_endpoint[0]], [hand.pose.y, hand_endpoint[1]], c='black', linewidth=3.)
 
-        goal_circ = plt.Circle(goal[1][:2], 1., fc='g')
+        goal_circ = plt.Circle(goal[:2], 1., fc='g')
         plt.gca().add_patch(goal_circ)
 
+        '''
+        # plots the sum of the contact forces, gravity, and friction force at object center
         plt.arrow(obj_pose.x, obj_pose.y, f_contact[0], f_contact[1],
             head_width=0.5, head_length=1., fc='k', ec='k')
 
@@ -409,9 +414,9 @@ def visualize_result(world, goal, p, outfile, S0=None):
 
         plt.arrow(obj_pose.x, obj_pose.y, f_gravity[0], f_gravity[1],
             head_width=0.5, head_length=1., fc='k', ec='k')
-
-        plt.xlim((-10., 50))
-        plt.ylim((-10., 50))
+        '''
+        plt.xlim((-10., 55))
+        plt.ylim((-10., 55))
         plt.tight_layout()
         plt.axes().set_aspect('equal', 'datalim')
         image_filename = os.path.join(temp_dirpath, '{}.png'.format(t))
@@ -420,6 +425,6 @@ def visualize_result(world, goal, p, outfile, S0=None):
         image_filenames.append(image_filename)
     images = [imageio.imread(filename) for filename in image_filenames]
     imageio.mimsave(outfile, images, fps=10)
-    #print("Wrote out to {}.".format(outfile))
+    print("Wrote out to {}.".format(outfile))
 
     shutil.rmtree(temp_dirpath)

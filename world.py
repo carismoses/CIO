@@ -5,13 +5,14 @@ from collections import namedtuple
 
 Pose = namedtuple('Pose', 'x y theta')
 Velocity = namedtuple('Velocity', 'x y theta')
+Acceleration = namedtuple('Acceleration', 'x y theta')
 Contact = namedtuple('Contact', 'f ro c')
 
 class WorldTraj(object):
     def __init__(self, S, world, p):
         # augment by calculating the accelerations from the velocities
         # interpolate all of the decision vars to get a finer trajectory disretization
-        self.S = augment_s(world.s0, S, p)
+        self.S = augment_s(world, S, p)
         self.world = world
         self.p = p
         self.step(0)
@@ -86,20 +87,11 @@ class World(object):
 
         return s0
 
-    def get_num_all_objects(self):
-        return 1 + len(self.manipulated_objects) + len(self.hands)
-
     def get_all_objects(self):
         return [self.ground] + self.manipulated_objects + self.hands
 
-    def get_num_dynamic_objects(self):
-        return len(self.manipulated_objects) + len(self.hands)
-
     def get_dynamic_objects(self):
-        return self.manipulated_objects + self.hands
-
-    def get_contact_objects(self):
-        return self.hands + [self.ground]
+        return self.hands + self.manipulated_objects
 
 # world origin is left bottom with 0 deg being along the x-axis (+ going ccw), all poses are in world frame
 class Object(object):
@@ -109,13 +101,17 @@ class Object(object):
         self.step_size = step_size
         self.rad_bounds = 1e-1
 
+        self.accel = None
+
     def step(self, S, t, p, index):
         if t == 0:
             self.pose = Pose(*S[6*index:6*index+3])
             self.vel = Velocity(*S[6*index+3:6*index+6])
+            self.accel = Acceleration(0.,0.,0.)
         else:
             self.pose = Pose(*S[6*index+(t-1)*p.len_s_aug:6*index+(t-1)*p.len_s_aug+3])
             self.vel = Velocity(*S[6*index+(t-1)*p.len_s_aug+3:6*index+(t-1)*p.len_s_aug+6])
+            self.accel = Acceleration(*S[6*index+(t-1)*p.len_s_aug+6:6*index+(t-1)*p.len_s_aug+9])
 
     def check_collisions(self, col_object):
         pts = self.discretize()
