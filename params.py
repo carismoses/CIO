@@ -52,7 +52,7 @@ class Params(object):
         self.phase_weights = phase_weights
 
         ## DERIVED PARAMETERS
-        self.N = world.get_num_contact_objects()
+        self.N = len(world.contact_state)
         self.steps_per_phase = int(self.delT_phase/self.delT)
         self.T_steps = self.K*self.steps_per_phase
         self.T_final = self.K*self.delT_phase
