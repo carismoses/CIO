@@ -21,11 +21,11 @@ class WorldTraj(object):
         self.calc_e(world.s0, 0, world)
 
     def step(self, t):
-        for object in self.world.get_contact_objects():
+        for (i,object) in enumerate(self.world.get_dynamic_objects()):
             if t == 0:
-                object.step(self.world.s0,t,self.p)
+                object.step(self.world.s0,t,self.p,i)
             else:
-                object.step(self.S,t,self.p)
+                object.step(self.S,t,self.p,i)
 
     # e_O is the shortest distance between roj and the object
     # e_H is the shortest distance between roj and the contact surfaces
@@ -69,7 +69,6 @@ class World(object):
         self.contact_state = contact_state
         self.traj_func = traj_func
         self.s0 = self.get_vars()
-        self.number_objects()
 
     def get_vars(self):
         s0 = np.array([])
@@ -87,13 +86,6 @@ class World(object):
 
         return s0
 
-    # objects that can make contact need a contact index
-    # objects that are dynamic need a pose index
-    def number_objects(self):
-
-        for (i,dyn_obj) in enumerate(self.get_dynamic_objects()):
-            dyn_obj.pose_index = i
-
     def get_num_all_objects(self):
         return 1 + len(self.manipulated_objects) + len(self.hands)
 
@@ -106,9 +98,6 @@ class World(object):
     def get_dynamic_objects(self):
         return self.manipulated_objects + self.hands
 
-    def get_num_contact_objects(self):
-        return 1 + len(self.hands)
-
     def get_contact_objects(self):
         return self.hands + [self.ground]
 
@@ -120,17 +109,13 @@ class Object(object):
         self.step_size = step_size
         self.rad_bounds = 1e-1
 
-        # set when world is initialized
-        self.pose_index = None
-
-    def step(self, S, t, p):
-        if self.pose_index != None:
-            if t == 0:
-                self.pose = Pose(*S[6*self.pose_index:6*self.pose_index+3])
-                self.vel = Velocity(*S[6*self.pose_index+3:6*self.pose_index+6])
-            else:
-                self.pose = Pose(*S[6*self.pose_index+(t-1)*p.len_s_aug:6*self.pose_index+(t-1)*p.len_s_aug+3])
-                self.vel = Velocity(*S[6*self.pose_index+(t-1)*p.len_s_aug+3:6*self.pose_index+(t-1)*p.len_s_aug+6])
+    def step(self, S, t, p, index):
+        if t == 0:
+            self.pose = Pose(*S[6*index:6*index+3])
+            self.vel = Velocity(*S[6*index+3:6*index+6])
+        else:
+            self.pose = Pose(*S[6*index+(t-1)*p.len_s_aug:6*index+(t-1)*p.len_s_aug+3])
+            self.vel = Velocity(*S[6*index+(t-1)*p.len_s_aug+3:6*index+(t-1)*p.len_s_aug+6])
 
     def check_collisions(self, col_object):
         pts = self.discretize()
@@ -256,7 +241,7 @@ class Rectangle(Object):
 
 class Circle(Object):
     def __init__(self, radius = 10.0, pose = Pose(0.0,0.0,0.0), vel = Velocity(0.0, 0.0, 0.0), \
-                pose_index = None, step_size = 0.5):
+                step_size = 0.5):
         self.radius = radius
         super(Circle,self).__init__(pose, vel, step_size)
 
