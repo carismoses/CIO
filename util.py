@@ -2,11 +2,14 @@ import numpy as np
 import pdb
 from scipy.interpolate import BPoly
 import imageio
+import matplotlib
 import matplotlib.pyplot as plt
 import shutil
 import tempfile
 import os
 import world as w
+import warnings
+warnings.filterwarnings("ignore")
 
 #np.random.seed(0)
 
@@ -336,22 +339,13 @@ def add_noise(vec):
     return vec
 
 ### FOR PRINTING AND VISUALIZING
-
-def print_step(ci, kinem, phys, task):
-    print('----- step costs ------')
-    print('cis:            ', ci)
+def print_final(ci, phys, kinem, task):
+    print('----- traj costs -----')
+    print('CI:             ', ci)
     print('kinematics:     ', kinem)
     print('physics:        ', phys)
     print('task:           ', task)
-    print('total:          ', ci + kinem + phys + task)
-
-def print_final(cis, kinems, physs, tasks):
-    print('----- traj costs -----')
-    print('cis:            ', cis)
-    print('kinematics:     ', kinems)
-    print('physics:        ', physs)
-    print('task:           ', tasks)
-    print('TOTAL: ', cis + kinems + physs + tasks)
+    print('TOTAL: ', ci + kinem + phys + task)
 
 def visualize_result(world, goal, p, outfile, S0=None):
     if S0 is None:
@@ -387,6 +381,8 @@ def visualize_result(world, goal, p, outfile, S0=None):
             rj_circ = plt.Circle(r, 1., fc='blue', alpha=cont.c)
             plt.gca().add_patch(rj_circ)
 
+            plt.arrow(r[0], r[1], cont.f[0], cont.f[1],
+                head_width=0.5, head_length=1., fc='k', ec='k')
         try:
             rect = plt.Rectangle([obj_pose.x, obj_pose.y], object.width, object.height, fc='r')
             plt.gca().add_patch(rect)
