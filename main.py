@@ -4,8 +4,6 @@ from params import Params, PhaseWeights
 from CIO import visualize_result, CIO, L
 from util import save_run
 
-import pdb; pdb.set_trace()
-
 # ground: origin is left
 ground = Line(length=30.0, pose=Pose(0.0,0.0,0.0))
 
@@ -40,21 +38,10 @@ def straight_traj(world, goal, p):
 world = World(ground=ground, manipulated_objects=[box], hands=[gripper1, gripper2],
             contact_state=contact_state)#, traj_func=straight_traj)
 
-'''
-could replace the above line with
-world = World(ground=.... , init_traj=some_other_function)
-some_other_function would need to take in (goal, world, p) and return a list of worlds the length of the keyframes (p.K)
-'''
 phase_weights = [PhaseWeights(w_CI=0., w_physics=0., w_kinematics=0., w_task=1.),
-                PhaseWeights(w_CI=0., w_physics=1., w_kinematics=0., w_task=1.)]
-p = Params(world, K=1, delT=.1, phase_weights=phase_weights, lamb=10.e-3)
+                PhaseWeights(w_CI=1., w_physics=1., w_kinematics=0., w_task=1.)]
+p = Params(world, K=5, delT=.1, phase_weights=phase_weights, lamb=10.e-4, mu=0.)
 
 phase_info = CIO(goal, world, p, single=False)
 
 save_run('good_run', p, world, phase_info)
-
-'''
-show how to change Params
-how to change init_Traj function
-how to run a single cost calc
-'''
