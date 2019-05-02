@@ -1,8 +1,10 @@
 import numpy as np
 from world import World, Line, Rectangle, Circle, Contact, Pose
 from params import Params, PhaseWeights
-from util import add_noise
-from CIO import visualize_result, CIO
+from CIO import visualize_result, CIO, L
+from util import save_run
+
+import pdb; pdb.set_trace()
 
 # ground: origin is left
 ground = Line(length=30.0, pose=Pose(0.0,0.0,0.0))
@@ -26,7 +28,17 @@ contact_state = {gripper1 : Contact(f=[0.0, 0.0], ro=[-5.0, 10.0], c=.5),
 
 goal = (50.0, rad, np.pi/2)
 
-world = World(ground=ground, manipulated_objects=[box], hands=[gripper1, gripper2], contact_state=contact_state)
+def straight_traj(world, goal, p):
+    straight = np.linspace(5,50,p.K)
+    S = np.zeros(p.len_S)
+    for k in range(p.K):
+        s = world.get_vars()
+        s[6*2] = straight[k]
+        S[k*p.len_s:k*p.len_s+p.len_s] = s
+    return S
+
+world = World(ground=ground, manipulated_objects=[box], hands=[gripper1, gripper2],
+            contact_state=contact_state)#, traj_func=straight_traj)
 
 '''
 could replace the above line with
@@ -35,11 +47,11 @@ some_other_function would need to take in (goal, world, p) and return a list of 
 '''
 phase_weights = [PhaseWeights(w_CI=0., w_physics=0., w_kinematics=0., w_task=1.),
                 PhaseWeights(w_CI=0., w_physics=1., w_kinematics=0., w_task=1.)]
-p = Params(world, K=1, delT=.1, phase_weights=phase_weights, lamb=1.e-3)
+p = Params(world, K=1, delT=.1, phase_weights=phase_weights, lamb=10.e-3)
 
-visualize_result(world, goal, p, 'initial.gif')
+phase_info = CIO(goal, world, p, single=False)
 
-phase_info = CIO(goal, world, p)
+save_run('good_run', p, world, phase_info)
 
 '''
 show how to change Params

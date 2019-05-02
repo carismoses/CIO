@@ -9,326 +9,113 @@ import tempfile
 import os
 import world as w
 import warnings
+import pickle
 warnings.filterwarnings("ignore")
 
-#np.random.seed(0)
+np.random.seed(0)
 
-#### GET FUNCTIONS ####
-def get_gripper1_pos(s):
-    i,j = get_gripper1_pos_ind()
-    return s[i:j]
-
-def get_gripper1_vel(s):
-    i,j = get_gripper1_vel_ind()
-    return s[i:j]
-
-def get_gripper2_pos(s):
-    i,j = get_gripper2_pos_ind()
-    return s[i:j]
-
-def get_gripper2_vel(s):
-    i,j = get_gripper2_vel_ind()
-    return s[i:j]
-
-def get_object_pos(s):
-    i,j = get_object_pos_ind()
-    return s[i:j]
-
-def get_object_vel(s):
-    i,j = get_object_vel_ind()
-    return s[i:j]
-
-def get_contact_info(s,p):
-    fj = np.zeros((p.N,2))
-    roj = np.zeros((p.N,2))
-    cj = np.zeros(p.N)
-
-    i = get_fj_ind()
-    k = get_roj_ind()
-    l = get_contact_ind()
-
-    for j in range(p.N):
-        fj[j,:] = s[i[j][0]:i[j][1]]
-        roj[j,:] = s[k[j][0]:k[j][1]]
-        cj[j] = s[l[j]]
-    return fj, roj, cj
-
-def get_gripper1_accel(s):
-    i,j = get_gripper1_accel_ind()
-    return s[i:j]
-
-def get_gripper2_accel(s):
-    i,j = get_gripper2_accel_ind()
-    return s[i:j]
-
-def get_object_accel(s):
-    i,j = get_object_accel_ind()
-    return s[i:j]
-
-#### GET INDICE FUNCTIONS ####
-def get_gripper1_pos_ind():
-    return 0,3
-
-def get_gripper1_vel_ind():
-    return 3,6
-
-def get_gripper2_pos_ind():
-    return 6,9
-
-def get_gripper2_vel_ind():
-    return 9,12
-
-def get_object_pos_ind():
-    return 12,15
-
-def get_object_vel_ind():
-    return 15,18
-
-def get_contact_info_ind():
-    return 18,33
-
-def get_fj_ind():
-    return (18,20), (23,25), (28,30)
-
-def get_roj_ind():
-    return (20,22), (25,27), (30,32)
-
-def get_contact_ind():
-    return 22, 27, 32
-
-def get_gripper1_accel_ind():
-    return 33,36
-
-def get_gripper2_accel_ind():
-    return 36,39
-
-def get_object_accel_ind():
-    return 39,42
-
-#### SET FUNCTIONS ####
-def set_object_pos(p, s):
-    i = get_object_pos_ind()
-    s[i[0]:i[1]] = p
-    return s
-
-def set_object_vel(v, s):
-    i = get_object_vel_ind()
-    s[i[0]:i[1]] = v
-    return s
-
-def set_object_accel(a, s):
-    i = get_object_accel_ind()
-    s[i[0]:i[1]] = a
-    return s
-
-def set_gripper1_pos(p, s):
-    i = get_gripper1_pos_ind()
-    s[i[0]:i[1]] = p
-    return s
-
-def set_gripper1_vel(v, s):
-    i = get_gripper1_vel_ind()
-    s[i[0]:i[1]] = v
-    return s
-
-def set_gripper1_accel(a, s):
-    i = get_gripper1_accel_ind()
-    s[i[0]:i[1]] = a
-    return s
-
-def set_gripper2_pos(p, s):
-    i = get_gripper2_pos_ind()
-    s[i[0]:i[1]] = p
-    return s
-
-def set_gripper2_vel(v, s):
-    i = get_gripper2_vel_ind()
-    s[i[0]:i[1]] = v
-    return s
-
-def set_gripper2_accel(a, s):
-    i = get_gripper2_accel_ind()
-    s[i[0]:i[1]] = a
-    return s
-
-def set_fj(fj, s, p):
-    i = get_fj_ind()
-    for j in range(p.N):
-        s[i[j][0]:i[j][1]] = fj[j,:]
-    return s
-
-def set_roj(roj, s, p):
-    i = get_roj_ind()
-    for j in range(p.N):
-        s[i[j][0]:i[j][1]] = roj[j,:]
-    return s
-
-def set_contact(c, s):
-    i,j,k = get_contact_ind()
-    s[i], s[j], s[k] = c
-    return s
-
-#### AUGMENT DECISION VARIABLE ####
-def augment_s(world, S, p):
-    s0 = world.s0
-    S_aug = np.zeros(p.len_S_aug)
-    
-    # perform spline interpolation and get velocities and accelerations for all objects
-    # object
-    set_funcs = set_object_pos, set_object_vel, set_object_accel
-    get_funcs = get_object_pos, get_object_vel
-    S_aug = interpolate_poses(s0, S, S_aug, set_funcs, get_funcs, p)
-
-    # gripper1
-    set_funcs = set_gripper1_pos, set_gripper1_vel, set_gripper1_accel
-    get_funcs = get_gripper1_pos, get_gripper1_vel
-    S_aug = interpolate_poses(s0, S, S_aug, set_funcs, get_funcs, p)
-
-    # gripper2
-    set_funcs = set_gripper2_pos, set_gripper2_vel, set_gripper2_accel
-    get_funcs = get_gripper2_pos, get_gripper2_vel
-    S_aug = interpolate_poses(s0, S, S_aug, set_funcs, get_funcs, p)
-
-    # interpolate contacts, contact forces, and contact poses
-    for k in range(p.K):
-        # get enpoints of interpolation phase
-        if k == 0:
-            s_left = s0
-        else:
-            s_left = get_s(S, k-1, p)
-        s_right = get_s(S, k, p)
-
-        # get s values at endpoints
-        fj_left, roj_left, cj_left = get_contact_info(s_left,p)
-        fj_right, roj_right, cj_right = get_contact_info(s_right,p)
-
-        # interpolate the contact forces (linear)
-        fjs = linspace_matrices(fj_left, fj_right, p.steps_per_phase+1)
-
-        # interpolate the contact poses (linear)
-        rojs = linspace_matrices(roj_left, roj_right, p.steps_per_phase+1)
-
-        for ph in range(p.steps_per_phase):
-            t = k*p.steps_per_phase + ph
-            s_aug = get_s(S_aug, t, p)
-
-            # interpolate contacts (constant)
-            s_aug = set_contact(cj_right, s_aug)
-
-            # interpolate contact forces (linear)
-            s_aug = set_fj(fjs[ph+1,:,:], s_aug, p)
-
-            # interpolate contact poses (linear)
-            s_aug = set_roj(rojs[ph+1,:,:], s_aug, p)
-            S_aug = set_s(S_aug, s_aug, t, p)
-
-    return S_aug
-
-def get_s(S, t, p):
-    if len(S) == p.len_S:
-        return S[t*p.len_s:t*p.len_s+p.len_s]
-    else:
-        return S[t*p.len_s_aug:t*p.len_s_aug+p.len_s_aug]
-
-def set_s(S, s, t, p):
-    if len(S) == p.len_S:
-        S[t*p.len_s:t*p.len_s+p.len_s] = s
-    else:
-        S[t*p.len_s_aug:t*p.len_s_aug+p.len_s_aug] = s
-    return S
+def save_run(file_name, p, world, phase_info):
+    fname = file_name + '.pickle'
+    data = [p, world, phase_info]
+    with open(fname, 'wb') as handle:
+        pickle.dump(data, handle)
+    print('Saved run to', fname)
 
 def calc_deriv(x1, x0, delta):
-    return (x1 - x0)/delta
+    return np.divide(np.subtract(x1,x0),delta)
 
-#### HELPER FUNCTIONS ####
-def get_bounds(p):
-    contact_ind = get_contact_ind()
-    ground_ind = get_fj_ind()[2][0]
+def get_dist(point0, point1):
+    return np.linalg.norm(point1 - point0)**2
+
+# hard coded for now
+def get_bounds(world, p):
     bounds = []
     for t in range(p.K):
         for v in range(p.len_s):
-            if v in contact_ind:
+            if v in [22, 27, 32]:
                 bounds.append((0.,1.)) # c's are between 0 and 1
-            elif v == ground_ind:
+            elif v == 28:
                 bounds.append((0.,0.)) # no x direction forces from the ground allowed
             else:
                 bounds.append((None,None))
     return bounds
 
-def linspace_matrices(mat0, mat1, num_steps):
-    w = len(mat0[0])
-    h = len(mat0)
-    out_mat = np.zeros((num_steps, h, w))
-    for j in range(h):
-        for i in range(w):
-            left = mat0[j,i]
-            right = mat1[j,i]
-            out_mat[:,j,i] = np.linspace(left, right, num_steps)
-    return out_mat
+def get_contact_info(s0, S, p, ci, dyn_offset):
+    offset = dyn_offset+5*ci
 
-def cubic_spline_func(s0, S, dim, get_funcs, p):
-    get_pos, get_vel = get_funcs
-    x = np.linspace(0.,p.T_final, p.K+1)
-    y = np.zeros((p.K+1,2))
-    for k in range(p.K+1):
-        if k == 0:
-            y[k,:] = get_pos(s0)[dim], get_vel(s0)[dim]
-        else:
-            y[k,:] = get_pos(get_s(S,k-1,p))[dim], get_vel(get_s(S,k-1,p))[dim]
+    f_traj_K = [s0[offset:offset+2]] + [S[offset+k*p.len_s:offset+k*p.len_s+2] for k in range(p.K)]
+    ro_traj_K = [s0[offset+2:offset+4]] + [S[offset+k*p.len_s+2:offset+k*p.len_s+4] for k in range(p.K)]
+    c_traj_K = [s0[offset+4]] + [S[offset+k*p.len_s+4] for k in range(p.K)]
 
-    f = BPoly.from_derivatives(x,y,orders=3, extrapolate=False)
-    return f
+    # interpolate contacts, contact forces, and contact poses
+    f_traj_T = np.zeros((2,p.T_steps+1))
+    ro_traj_T = np.zeros((2,p.T_steps+1))
+    c_traj_T = np.zeros(p.T_steps+1)
 
-def interpolate_poses(s0, S, S_aug, set_funcs, get_funcs, p):
-    #pdb.set_trace()
+    for k in range(1,p.K+1):
+        f_left, ro_left, c_left = f_traj_K[k-1], ro_traj_K[k-1], c_traj_K[k-1]
+        f_right, ro_right, c_right = f_traj_K[k], ro_traj_K[k], c_traj_K[k]
 
-    # get spline functions using the velocities as tangents
-    set_pos, set_vel, set_accel = set_funcs
-    get_pos, get_vel = get_funcs
+        # interpolate the contact forces (linear)
+        f_traj_T[:,(k-1)*p.steps_per_phase:k*p.steps_per_phase+1] = linspace_vectors(f_left, f_right, p.steps_per_phase+1)
+
+        # interpolate the contact poses (linear)
+        ro_traj_T[:,(k-1)*p.steps_per_phase:k*p.steps_per_phase+1] = linspace_vectors(ro_left, ro_right, p.steps_per_phase+1)
+
+        for t in range((k-1)*p.steps_per_phase,k*p.steps_per_phase+1):
+            c_traj_T[t] = c_traj_K[k]
+
+    return f_traj_T, ro_traj_T, c_traj_T
+
+def calc_obj_dynamics(s0, S, p, index):
+    # get pose and vel traj from S
+    offset = 6*index
+    pose_traj_K = [s0[offset:offset+3]] + [S[offset+k*p.len_s:offset+k*p.len_s+3] for k in range(p.K)]
+    vel_traj_K = [s0[offset+3:offset+6]] + [S[offset+k*p.len_s+3:offset+k*p.len_s+6] for k in range(p.K)]
+
+    # make spline functions
     spline_funcs = []
     for dim in range(3):
-        spline_funcs += [cubic_spline_func(s0, S, dim, get_funcs, p)]
+        x = np.linspace(0.,p.T_final, p.K+1)
+        y = np.zeros((p.K+1,2))
+        for k in range(p.K+1):
+            y[k,:] = pose_traj_K[k][dim], vel_traj_K[k][dim]
+        spline_funcs += [BPoly.from_derivatives(x,y,orders=3, extrapolate=False)]
 
-    # calc poses using spline function
-    i = 0
-    j = 0
+    # use to interpolate pose
+    pose_traj_T = []
+    k = 0
     times = np.linspace(0.,p.T_final, p.T_steps+1)
     for t in times:
-        if i != 0:
-            if not t % p.delT_phase: # this is a keyframe
-                pose = get_pos(get_s(S,j,p))
-                j += 1
-            else: # get from spline
-                pose = spline_funcs[0](t), spline_funcs[1](t), spline_funcs[2](t)
-            s = get_s(S_aug, i-1, p)
-            s = set_pos(pose, s)
-            S_aug = set_s(S_aug, s, i-1, p)
-        i += 1
+        if not t % p.delT_phase: # this is a keyframe
+            pose_traj_T += [pose_traj_K[k]]
+            k += 1
+        else: # get from spline
+            pose_traj_T += [[spline_funcs[0](t), spline_funcs[1](t), spline_funcs[2](t)]]
 
-    # use FD to get velocities and accels #TODO: check that vels are close to ones in dec vars
-    for i in range(p.T_steps):
-        if i == 0:
-            x_tm1 = get_pos(s0)
-        else:
-            x_tm1 = get_pos(get_s(S_aug, i-1, p))
-        x_t = get_pos(get_s(S_aug, i, p))
-        v = calc_deriv(x_t, x_tm1, p.delT)
-        s = get_s(S_aug, i, p)
-        s = set_vel(v, s)
-        S_aug = set_s(S_aug, s, i, p)
+    # use FD to get velocities and accels
+    vel_traj_T = [np.zeros(3)]
+    for t in range(1,p.T_steps+1):
+        p_tm1 = pose_traj_T[t-1]
+        p_t= pose_traj_T[t]
+        vel_traj_T += [calc_deriv(p_t, p_tm1, p.delT)]
 
-    for i in range(p.T_steps):
-        if i == 0:
-            v_tm1 = get_vel(s0)
-        else:
-            v_tm1 = get_vel(get_s(S_aug,i-1,p))
-        v_t = get_vel(get_s(S_aug, i, p))
-        a = calc_deriv(v_t, v_tm1, p.delT)
-        s = get_s(S_aug, i, p)
-        s = set_accel(a, s)
-        S_aug = set_s(S_aug, s, i, p)
+    accel_traj_T = [np.zeros(3)]
+    for t in range(1,p.T_steps+1):
+        v_tm1 = vel_traj_T[t-1]
+        v_t = vel_traj_T[t]
+        accel_traj_T += [calc_deriv(v_t, v_tm1, p.delT)]
 
-    return S_aug
+    return pose_traj_T, vel_traj_T, accel_traj_T
+
+def linspace_vectors(vec0, vec1, num_steps):
+    l = len(vec0)
+    out_vec = np.zeros((l, num_steps))
+    for j in range(l):
+        left = vec0[j]
+        right = vec1[j]
+        out_vec[j,:] = np.linspace(left, right, num_steps)
+    return out_vec
 
 def add_noise(vec):
     # perturb all vars by gaussian noise
@@ -348,35 +135,33 @@ def print_final(ci, phys, kinem, task):
     print('     task:           ', task)
     print('  TOTAL: ', ci + kinem + phys + task)
 
-def visualize_result(world, goal, p, outfile, S0=None):
-    if S0 is None:
-        S0 = world.traj_func(world, goal, p)
-    world_traj = w.WorldTraj(S0, world, p)
+def visualize_result(world, goal, p, outfile, S=None):
+    if S is None:
+        S = world.traj_func(world, goal, p)
+    world_traj = w.WorldTraj(S, world, p)
 
     temp_dirpath = tempfile.mkdtemp()
     image_filenames = []
 
-    for t in range(p.T_steps+1):
+    for (t,world_t) in enumerate(world_traj.worlds):
         plt.figure()
 
-        world_traj.step(t)
-        world = world_traj.world
-        object = world.manipulated_objects[0]
+        object = world_t.manipulated_objects[0]
 
         f_contact = np.array([0.0, 0.0])
-        for cont in world.contact_state.values():
+        for cont in world_t.contact_state.values():
             f_contact += cont.c*np.array(cont.f)
         f_gravity = np.array([0., -p.mass*p.gravity])
         ov = object.vel
 
-        ground_c = world.contact_state[world.ground].c
-        ground_f = world.contact_state[world.ground].f[1]
+        ground_c = world_t.contact_state[world_t.ground].c
+        ground_f = world_t.contact_state[world_t.ground].f[1]
         fric = (-1*np.sign(ov.x))*p.mu*ground_c*ground_f
         f_fric = np.array([fric, 0.])
 
         obj_pose = object.pose
 
-        for cont in world.contact_state.values():
+        for cont in world_t.contact_state.values():
             # get ro in world frame
             r = cont.ro + np.array([obj_pose.x, obj_pose.y])
             rj_circ = plt.Circle(r, 1., fc='blue', alpha=cont.c)
@@ -396,7 +181,7 @@ def visualize_result(world, goal, p, outfile, S0=None):
         obj_origin = plt.Circle([obj_pose.x, obj_pose.y], 1., fc='gray')
         plt.gca().add_patch(obj_origin)
         '''
-        for hand in world.hands:
+        for hand in world_t.hands:
             hand_endpoint = np.add(np.array([hand.pose.x, hand.pose.y]),
                             hand.length*np.array((np.cos(hand.pose.y), np.sin(hand.pose.y))))
             plt.plot([hand.pose.x, hand_endpoint[0]], [hand.pose.y, hand_endpoint[1]], c='black', linewidth=3.)

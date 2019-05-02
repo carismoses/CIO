@@ -1,7 +1,8 @@
 import pdb
 import numpy as np
-from util import *
+from util import calc_obj_dynamics, get_contact_info, add_noise, calc_deriv, get_dist
 from collections import namedtuple
+from copy import deepcopy
 
 Pose = namedtuple('Pose', 'x y theta')
 Velocity = namedtuple('Velocity', 'x y theta')
@@ -10,55 +11,36 @@ Contact = namedtuple('Contact', 'f ro c')
 
 class WorldTraj(object):
     def __init__(self, S, world, p):
-        # augment by calculating the accelerations from the velocities
-        # interpolate all of the decision vars to get a finer trajectory disretization
-        self.S = augment_s(world, S, p)
-        self.world = world
-        self.p = p
-        self.step(0)
+        # get dyanamic and contact info from S
+        dyn_info = {}
+        for (i, dyn_obj) in enumerate(world.get_dynamic_objects()):
+            poses, vels, accels = calc_obj_dynamics(world.s0, S, p, i)
+            dyn_info[i] = [poses, vels, accels]
 
-        # initialize to zero and calulate e for t=0
-        self.e_Os, self.e_Hs = np.zeros((self.p.N, self.p.T_steps, 2)), np.zeros((self.p.N, self.p.T_steps, 2))
-        self.calc_e(world.s0, 0, world)
+        dyn_offset = len(world.get_dynamic_objects())*6
+        cont_info = {}
+        for (ci, cont_obj) in enumerate(world.contact_state):
+            fs, ros, cs = get_contact_info(world.s0, S, p, ci, dyn_offset)
+            cont_info[ci] = [fs, ros, cs]
 
-    def step(self, t):
-        for (i,object) in enumerate(self.world.get_dynamic_objects()):
+        # fill into list of new worlds
+        self.worlds = []
+        for t in range(p.T_steps+1):
+            world_t = deepcopy(world)
+            for i in range(len(world_t.get_dynamic_objects())):
+                world_t.set_dynamics(i,dyn_info[i][0][t], dyn_info[i][1][t], dyn_info[i][2][t])
+            for ci in range(len(world_t.contact_state)):
+                world_t.set_contact_state(ci, cont_info[ci][0][:,t], cont_info[ci][1][:,t], cont_info[ci][2][t])
             if t == 0:
-                object.step(self.world.s0,t,self.p,i)
+                world_t.set_e_vars(None, p)
             else:
-                object.step(self.S,t,self.p,i)
-
-    # e_O is the shortest distance between roj and the object
-    # e_H is the shortest distance between roj and the contact surfaces
-    def calc_e(self, s, t, world):
-        box = world.manipulated_objects[0]
-        o = np.array([box.pose.x, box.pose.y])
-
-        # get ro: roj in world frame
-        _, roj, _ = get_contact_info(s,self.p)
-        rj = roj + np.tile(o, (3, 1))
-
-        # get pi_j: project rj onto all contact surfaces
-        pi_j = np.zeros((self.p.N, 2))
-        for (i,cont_obj) in enumerate(self.world.contact_state):
-            pi_j[i,:] = cont_obj.project_point(rj[i,:])
-
-        # get pi_o: project rj onto object
-        pi_o = np.zeros((self.p.N,2))
-        for j in range(self.p.N):
-            pi_o[j,:] = box.project_point(rj[j,:])
-
-        e_O = pi_o - rj
-        e_H = pi_j - rj
-        self.e_Os[:,t,:], self.e_Hs[:,t,:] = e_O, e_H
-
-        return e_O, e_H
+                world_t.set_e_vars(self.worlds[t-1], p)
+            self.worlds += [world_t]
 
 def stationary_traj(world, goal, p):
     S = np.zeros(p.len_S)
     for k in range(p.K):
         S[k*p.len_s:k*p.len_s+p.len_s] = world.get_vars()
-    S = add_noise(S)
     return S
 
 class World(object):
@@ -70,6 +52,37 @@ class World(object):
         self.contact_state = contact_state
         self.traj_func = traj_func
         self.s0 = self.get_vars()
+
+        self.e_O = {}
+        self.e_H = {}
+        self.e_dot_O = {}
+        self.e_dot_H = {}
+
+    def set_dynamics(self, obj_index, pose, vel, accel):
+        dyn_objs = self.get_dynamic_objects()
+        dyn_objs[obj_index].set_dynamics(pose, vel, accel)
+
+    def set_contact_state(self, obj_index, f, ro, c):
+        cont_objs = list(self.contact_state)
+        self.contact_state[cont_objs[obj_index]] = Contact(f=f, ro=ro, c=c)
+
+    def set_e_vars(self, world_tm1, p):
+        object = self.manipulated_objects[0]
+        object_pose = np.array([object.pose.x, object.pose.y])
+
+        for (ci, (cont_obj, cont)) in enumerate(self.contact_state.items()):
+            r = np.add(cont.ro, object_pose)
+            pi_H = cont_obj.project_point(r)
+            pi_O = object.project_point(r)
+            self.e_H[ci] = np.subtract(pi_H, r)
+            self.e_O[ci] = np.subtract(pi_O,r)
+
+            if world_tm1 is None:
+                self.e_dot_H[ci] = np.array([0., 0.])
+                self.e_dot_O[ci] = np.array([0., 0.])
+            else:
+                self.e_dot_H[ci] = calc_deriv(self.e_H[ci],world_tm1.e_H[ci],p.delT)
+                self.e_dot_O[ci] = calc_deriv(self.e_O[ci],world_tm1.e_O[ci],p.delT)
 
     def get_vars(self):
         s0 = np.array([])
@@ -95,7 +108,8 @@ class World(object):
 
 # world origin is left bottom with 0 deg being along the x-axis (+ going ccw), all poses are in world frame
 class Object(object):
-    def __init__(self, pose = Pose(0.0,0.0,0.0), vel = Velocity(0.0, 0.0, 0.0), step_size = 0.5):
+    def __init__(self, pose = Pose(0.0,0.0,0.0), vel = Velocity(0.0, 0.0, 0.0),
+                    step_size = 0.5):
         self.pose = pose
         self.vel = vel
         self.step_size = step_size
@@ -103,15 +117,10 @@ class Object(object):
 
         self.accel = None
 
-    def step(self, S, t, p, index):
-        if t == 0:
-            self.pose = Pose(*S[6*index:6*index+3])
-            self.vel = Velocity(*S[6*index+3:6*index+6])
-            self.accel = Acceleration(0.,0.,0.)
-        else:
-            self.pose = Pose(*S[6*index+(t-1)*p.len_s_aug:6*index+(t-1)*p.len_s_aug+3])
-            self.vel = Velocity(*S[6*index+(t-1)*p.len_s_aug+3:6*index+(t-1)*p.len_s_aug+6])
-            self.accel = Acceleration(*S[6*index+(t-1)*p.len_s_aug+6:6*index+(t-1)*p.len_s_aug+9])
+    def set_dynamics(self, pose, vel, accel):
+        self.pose = Pose(*pose)
+        self.vel = Velocity(*vel)
+        self.accel = Acceleration(*accel)
 
     def check_collisions(self, col_object):
         pts = self.discretize()
@@ -256,7 +265,3 @@ class Circle(Object):
         closest_point = np.array([self.pose.x, self.pose.x]) + (origin_to_point * self.radius)
 
         return closest_point
-
-#### geometric helper functions ####
-def get_dist(point0, point1):
-    return np.linalg.norm(point1 - point0)**2
