@@ -18,7 +18,7 @@ def main(args):
     # initial contact information
     contact_state = OrderedDict([(finger0, Contact(f=(0.0, 0.0), ro=(-7., -7.), c=.5)),
                                  (finger1, Contact(f=(0.0, 0.0), ro=(7., -7.), c=.5))])
-    goal = Position(5.0, 20.0)
+    goals = [Position(5.0, 20.0)]
 
     world = World(manip_obj, [finger0, finger1], contact_state)
 
@@ -27,9 +27,9 @@ def main(args):
     p = Params(world, K=2, delT=.1, phase_weights=phase_weights, lamb=10.e-3, mu=0.9)
 
     if args.single:
-        phase_info = CIO(goal, world, p, single=True)
+        phase_info = CIO(goals, world, p, single=True)
     else:
-        phase_info = CIO(goal, world, p)
+        phase_info = CIO(goals, world, p)
 
     if args.save:
         save_run(args.save, p, world, phase_info)

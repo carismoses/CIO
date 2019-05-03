@@ -142,9 +142,9 @@ def print_final(ci, phys, kinem, task):
     print('     task:           ', task)
     print('  TOTAL: ', ci + kinem + phys + task)
 
-def visualize_result(world, goal, p, outfile, S=None):
+def visualize_result(world, goals, p, outfile, S=None):
     if S is None:
-        S = world.traj_func(world, goal, p)
+        S = world.traj_func(world, goals, p)
     world_traj = w.WorldTraj(S, world, p)
 
     temp_dirpath = tempfile.mkdtemp()
@@ -181,8 +181,11 @@ def visualize_result(world, goal, p, outfile, S=None):
             circ = plt.Circle([obj_pose.x, obj_pose.y], object.radius, fc='r')
             plt.gca().add_patch(circ)
 
-        goal_circ = plt.Circle(goal[:2], 1., fc='g')
-        plt.gca().add_patch(goal_circ)
+        # find position goal and print
+        for goal in goals:
+            if type(goal) == w.Position:
+                goal_circ = plt.Circle(goal[:2], 1., fc='g')
+                plt.gca().add_patch(goal_circ)
 
         '''
         # plots the sum of the contact forces at object center

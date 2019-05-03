@@ -5,7 +5,7 @@ from world import WorldTraj, Position, LinearVelocity
 from util import print_final, visualize_result, get_bounds, add_noise, save_run, normalize
 
 #### MAIN OBJECTIVE FUNCTION ####
-def L(S, goal, world, p, phase=0):
+def L(S, goals, world, p, phase=0):
     def L_CI(t, world_t):
         cost = 0
         for (ci, (cont_obj, cont)) in enumerate(world.contact_state.items()):
@@ -59,14 +59,15 @@ def L(S, goal, world, p, phase=0):
         # task constraint: get object to desired pos
         I = 1 if t == (p.T_steps-1) else 0
         task_cost = 0
-        if type(goal) == Position:
-            obj_pos = [world_t.manip_obj.pose.x, world_t.manip_obj.pose.y]
-            goal_pos = [goal.x, goal.y]
-            task_cost = I*np.linalg.norm(np.subtract(obj_pos, goal_pos))**2
-        elif type(goal) == LinearVelocity:
-            obj_vel = [world_t.manip_obj.vel.x, world_t.manip_obj.vel.y]
-            goal_vel = [goal.x, goal.y]
-            task_cost = I*np.linalg.norm(np.subtract(obj_vel, goal_vel))**2
+        for goal in goals:
+            if type(goal) == Position:
+                obj_pos = [world_t.manip_obj.pose.x, world_t.manip_obj.pose.y]
+                goal_pos = [goal.x, goal.y]
+                task_cost += I*np.linalg.norm(np.subtract(obj_pos, goal_pos))**2
+            elif type(goal) == LinearVelocity:
+                obj_vel = [world_t.manip_obj.vel.x, world_t.manip_obj.vel.y]
+                goal_vel = [goal.x, goal.y]
+                task_cost += I*np.linalg.norm(np.subtract(obj_vel, goal_vel))**2
 
         # small acceleration constraint (supposed to keep hand accel small, but
         # don't have a central hand so use grippers individually)
@@ -91,20 +92,20 @@ def L(S, goal, world, p, phase=0):
     return total_cost
 
 #### MAIN FUNCTION ####
-def CIO(goal, world, p, single=False, start_phase=0):
+def CIO(goals, world, p, single=False, start_phase=0):
     if single:
         # FOR TESTING A SINGLE traj
-        S = world.traj_func(world, goal, p)
+        S = world.traj_func(world, goals, p)
         S_noise = add_noise(S)
-        visualize_result(world, goal, p, 'initial.gif', S_noise)
-        tot_cost = L(S, goal, world, p, start_phase)
+        visualize_result(world, goals, p, 'initial.gif', S_noise)
+        tot_cost = L(S, goals, world, p, start_phase)
         print_final(*function_costs)
         return {}
 
-    S = world.traj_func(world, goal, p)
+    S = world.traj_func(world, goals, p)
     S_noise = add_noise(S)
-    visualize_result(world, goal, p, 'initial.gif', S_noise)
-    tot_cost = L(S_noise, goal, world, p)
+    visualize_result(world, goals, p, 'initial.gif', S_noise)
+    tot_cost = L(S_noise, goals, world, p)
     print_final(*function_costs)
 
     bounds = get_bounds(world, p)
@@ -113,13 +114,13 @@ def CIO(goal, world, p, single=False, start_phase=0):
     for phase in range(start_phase, len(p.phase_weights)):
         print('BEGINNING PHASE:', phase)
         p.print_phase_weights(phase)
-        res = minimize(fun=L, x0=x_init, args=(goal, world, p, phase),
+        res = minimize(fun=L, x0=x_init, args=(goals, world, p, phase),
                 method='L-BFGS-B', bounds=bounds, options={'eps': 10.e-3})
         x_final = res['x']
         nit = res['nit']
         final_cost = res['fun']
 
-        visualize_result(world, goal, p, 'phase_{}.gif'.format(phase), x_final)
+        visualize_result(world, goals, p, 'phase_{}.gif'.format(phase), x_final)
         print_final(*function_costs)
         all_final_costs = function_costs
         ret_info[phase] = world.s0, x_final, final_cost, nit, all_final_costs
