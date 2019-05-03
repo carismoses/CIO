@@ -80,7 +80,7 @@ class World(object):
             the manipulated object
         fingers : list of Circle
             a list of Circle objects representing fingers
-        contact_state : dict[Circle:Contact]
+        contact_state : OrderedDict[Circle:Contact]
             a dictionary describing the contact state for each finger
         """
         self.manip_obj = manip_obj

@@ -4,6 +4,7 @@ from params import Params, PhaseWeights
 from CIO import visualize_result, CIO
 from util import save_run
 import argparse
+from collections import OrderedDict
 
 def main(args):
     if args.debug:
@@ -15,8 +16,8 @@ def main(args):
     finger1 = Circle(1.0, Position(15.0, -5.0))
 
     # initial contact information
-    contact_state = {finger0 : Contact(f=(0.0, 0.0), ro=(-7., -7.), c=.5),
-                     finger1 : Contact(f=(0.0, 0.0), ro=(7., -7.), c=.5)}
+    contact_state = OrderedDict([(finger0, Contact(f=(0.0, 0.0), ro=(-7., -7.), c=.5)),
+                                 (finger1, Contact(f=(0.0, 0.0), ro=(7., -7.), c=.5))])
     goal = Position(5.0, 20.0)
 
     world = World(manip_obj, [finger0, finger1], contact_state)
