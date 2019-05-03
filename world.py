@@ -251,12 +251,11 @@ class Circle(Object):
     def check_inside(self, point):
         pass#TODO
 
-    # return the closest projected point out of all rect surfaces
+    # projects the given point onto the surface of this object
     def project_point(self, point):
-
         origin_to_point = np.subtract(point[:2], np.array([self.pose.x,self.pose.y]))
         origin_to_point /= np.linalg.norm(origin_to_point)
 
-        closest_point = np.array([self.pose.x, self.pose.x]) + (origin_to_point * self.radius)
+        closest_point = np.array([self.pose.x, self.pose.y]) + (origin_to_point * self.radius)
 
         return closest_point
