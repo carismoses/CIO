@@ -40,25 +40,16 @@ def L(S, goal, world, p, phase=0):
 
     def L_physics(t, world_t):
         # calculate sum of forces on object
-        # calc frictional force only if object is moving in x direction
         f_tot = np.array([0.0, 0.0])
         for cont in world_t.contact_state.values():
             f_tot += cont.c*np.array(cont.f)
-        f_tot[1] += -p.mass*p.gravity
-
-        ov = world_t.manipulated_objects[0].vel
-        oa = world_t.manipulated_objects[0].accel
-
-        ground_c = world_t.contact_state[world_t.ground].c
-        ground_f = world_t.contact_state[world_t.ground].f[1]
-        fric = (-1*np.sign(ov.x))*p.mu*ground_c*ground_f
-        f_fric = np.array([fric, 0.])
 
         # calc change in linear momentum
+        oa = world_t.manip_obj.accel
         p_dot = np.multiply(p.mass,[oa.x,oa.y])
 
         # calc sum of moments on object
-        # TODO: correct calc of I (moment of inertia), add moment from friction
+        # TODO: correct calc of I (moment of inertia)
         I = p.mass
         m_tot = np.array([0.0,0.0])
         for cont in world_t.contact_state.values():
@@ -100,12 +91,12 @@ def L(S, goal, world, p, phase=0):
     def L_task(t, world_t):
         # task constraint: get object to desired pos
         I = 1 if t == (p.T_steps-1) else 0
-        obj_pose = world_t.manipulated_objects[0].pose
+        obj_pose = world_t.manip_obj.pose
         task_cost = I*np.linalg.norm(np.subtract(obj_pose, goal))**2
 
         # small acceleration constraint (supposed to keep hand accel small, but
         # don't have a central hand so use grippers individually)
-        o_dotdot = world_t.manipulated_objects[0].accel
+        o_dotdot = world_t.manip_obj.accel
         g1_dotdot = world_t.hands[0].accel
         g2_dotdot = world_t.hands[1].accel#get_gripper2_accel(s)
 

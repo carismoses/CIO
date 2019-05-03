@@ -13,11 +13,11 @@ class WorldTraj(object):
     def __init__(self, S, world, p):
         # get dyanamic and contact info from S
         dyn_info = {}
-        for (i, dyn_obj) in enumerate(world.get_dynamic_objects()):
+        for (i, dyn_obj) in enumerate(world.get_all_objects()):
             poses, vels, accels = calc_obj_dynamics(world.s0, S, p, i)
             dyn_info[i] = [poses, vels, accels]
 
-        dyn_offset = len(world.get_dynamic_objects())*6
+        dyn_offset = len(world.get_all_objects())*6
         cont_info = {}
         for (ci, cont_obj) in enumerate(world.contact_state):
             fs, ros, cs = get_contact_info(world.s0, S, p, ci, dyn_offset)
@@ -27,7 +27,7 @@ class WorldTraj(object):
         self.worlds = []
         for t in range(p.T_steps+1):
             world_t = deepcopy(world)
-            for i in range(len(world_t.get_dynamic_objects())):
+            for i in range(len(world_t.get_all_objects())):
                 world_t.set_dynamics(i,dyn_info[i][0][t], dyn_info[i][1][t], dyn_info[i][2][t])
             for ci in range(len(world_t.contact_state)):
                 world_t.set_contact_state(ci, cont_info[ci][0][:,t], cont_info[ci][1][:,t], cont_info[ci][2][t])
@@ -44,10 +44,9 @@ def stationary_traj(world, goal, p):
     return S
 
 class World(object):
-    def __init__(self, ground=None, manipulated_objects=[], hands=[], contact_state={}, \
+    def __init__(self, manip_obj=None, hands=[], contact_state={}, \
                     traj_func=stationary_traj):
-        self.ground = ground
-        self.manipulated_objects = manipulated_objects
+        self.manip_obj = manip_obj
         self.hands = hands
         self.contact_state = contact_state
         self.traj_func = traj_func
@@ -59,21 +58,20 @@ class World(object):
         self.e_dot_H = {}
 
     def set_dynamics(self, obj_index, pose, vel, accel):
-        dyn_objs = self.get_dynamic_objects()
-        dyn_objs[obj_index].set_dynamics(pose, vel, accel)
+        objs = self.get_all_objects()
+        objs[obj_index].set_dynamics(pose, vel, accel)
 
     def set_contact_state(self, obj_index, f, ro, c):
         cont_objs = list(self.contact_state)
         self.contact_state[cont_objs[obj_index]] = Contact(f=f, ro=ro, c=c)
 
     def set_e_vars(self, world_tm1, p):
-        object = self.manipulated_objects[0]
-        object_pose = np.array([object.pose.x, object.pose.y])
+        object_pose = np.array([self.manip_obj.pose.x, self.manip_obj.pose.y])
 
         for (ci, (cont_obj, cont)) in enumerate(self.contact_state.items()):
             r = np.add(cont.ro, object_pose)
             pi_H = cont_obj.project_point(r)
-            pi_O = object.project_point(r)
+            pi_O = self.manip_obj.project_point(r)
             self.e_H[ci] = np.subtract(pi_H, r)
             self.e_O[ci] = np.subtract(pi_O,r)
 
@@ -88,7 +86,7 @@ class World(object):
         s0 = np.array([])
 
         # fill in object poses and velocities
-        for object in self.get_dynamic_objects():
+        for object in self.get_all_objects():
             s0 = np.concatenate([s0,object.pose])
             s0 = np.concatenate([s0,object.vel])
 
@@ -101,10 +99,7 @@ class World(object):
         return s0
 
     def get_all_objects(self):
-        return [self.ground] + self.manipulated_objects + self.hands
-
-    def get_dynamic_objects(self):
-        return self.hands + self.manipulated_objects
+        return [self.manip_obj] + self.hands
 
 # world origin is left bottom with 0 deg being along the x-axis (+ going ccw), all poses are in world frame
 class Object(object):

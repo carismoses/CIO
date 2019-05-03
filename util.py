@@ -27,15 +27,18 @@ def calc_deriv(x1, x0, delta):
 def get_dist(point0, point1):
     return np.linalg.norm(point1 - point0)**2
 
-# hard coded for now
 def get_bounds(world, p):
+    cis = []
+    dyn_obj_offset = 6*len(world.get_all_objects())
+    for i in range(len(world.contact_state)):
+        cis += [dyn_obj_offset + 5*i + 4]
+
+    print(cis)
     bounds = []
     for t in range(p.K):
         for v in range(p.len_s):
-            if v in [22, 27, 32]:
-                bounds.append((0.,1.)) # c's are between 0 and 1
-            elif v == 28:
-                bounds.append((0.,0.)) # no x direction forces from the ground allowed
+            if v in cis:
+                bounds.append((0.,1.))
             else:
                 bounds.append((None,None))
     return bounds
@@ -146,26 +149,22 @@ def visualize_result(world, goal, p, outfile, S=None):
     for (t,world_t) in enumerate(world_traj.worlds):
         plt.figure()
 
-        object = world_t.manipulated_objects[0]
+        object = world_t.manip_obj
 
         f_contact = np.array([0.0, 0.0])
         for cont in world_t.contact_state.values():
             f_contact += cont.c*np.array(cont.f)
-        f_gravity = np.array([0., -p.mass*p.gravity])
-        ov = object.vel
-
-        ground_c = world_t.contact_state[world_t.ground].c
-        ground_f = world_t.contact_state[world_t.ground].f[1]
-        fric = (-1*np.sign(ov.x))*p.mu*ground_c*ground_f
-        f_fric = np.array([fric, 0.])
 
         obj_pose = object.pose
 
-        for cont in world_t.contact_state.values():
+        for (cont_obj, cont) in world_t.contact_state.items():
             # get ro in world frame
             r = cont.ro + np.array([obj_pose.x, obj_pose.y])
             rj_circ = plt.Circle(r, 1., fc='blue', alpha=cont.c)
             plt.gca().add_patch(rj_circ)
+
+            hand_circ = plt.Circle([cont_obj.pose.x, cont_obj.pose.y], cont_obj.radius, fc='black')
+            plt.gca().add_patch(hand_circ)
 
             plt.arrow(r[0], r[1], cont.f[0], cont.f[1],
                 head_width=0.5, head_length=1., fc='k', ec='k')
@@ -181,23 +180,12 @@ def visualize_result(world, goal, p, outfile, S=None):
         obj_origin = plt.Circle([obj_pose.x, obj_pose.y], 1., fc='gray')
         plt.gca().add_patch(obj_origin)
         '''
-        for hand in world_t.hands:
-            hand_endpoint = np.add(np.array([hand.pose.x, hand.pose.y]),
-                            hand.length*np.array((np.cos(hand.pose.y), np.sin(hand.pose.y))))
-            plt.plot([hand.pose.x, hand_endpoint[0]], [hand.pose.y, hand_endpoint[1]], c='black', linewidth=3.)
-
         goal_circ = plt.Circle(goal[:2], 1., fc='g')
         plt.gca().add_patch(goal_circ)
 
         '''
-        # plots the sum of the contact forces, gravity, and friction force at object center
+        # plots the sum of the contact forces at object center
         plt.arrow(obj_pose.x, obj_pose.y, f_contact[0], f_contact[1],
-            head_width=0.5, head_length=1., fc='k', ec='k')
-
-        plt.arrow(obj_pose.x, obj_pose.y, f_fric[0], f_fric[1],
-            head_width=0.5, head_length=1., fc='k', ec='k')
-
-        plt.arrow(obj_pose.x, obj_pose.y, f_gravity[0], f_gravity[1],
             head_width=0.5, head_length=1., fc='k', ec='k')
         '''
         plt.xlim((-10., 55))

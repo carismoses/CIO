@@ -16,7 +16,7 @@ w_task : float
 """
 
 class Params(object):
-    def __init__(self, world, K=10, delT=0.05, delT_phase=0.5, mass=1.0, gravity=10.0,
+    def __init__(self, world, K=10, delT=0.05, delT_phase=0.5, mass=1.0,
                     mu=0.3, lamb=10.e-3, phase_weights=[PhaseWeights(w_CI=0.1, w_physics=0.1, w_kinematics=1.0, w_task=1.0), \
                     PhaseWeights(w_CI=10., w_physics=1., w_kinematics=1., w_task=10.)], init_traj=None):
         """
@@ -32,8 +32,6 @@ class Params(object):
             the length of time a keyframe lasts
         mass : float, optional
             the mass (kg) of the manipulated object
-        gravity : float, optional
-            the magnitude of the gravitational force
         mu : float, optional
             the coefficient of friction
         lamb : float, optional
@@ -46,7 +44,6 @@ class Params(object):
         self.delT = delT
         self.delT_phase = delT_phase
         self.mass = mass
-        self.gravity = gravity
         self.mu = mu
         self.lamb = lamb
         self.phase_weights = phase_weights
@@ -57,9 +54,9 @@ class Params(object):
         self.T_steps = self.K*self.steps_per_phase
         self.T_final = self.K*self.delT_phase
         # each dynamic object has a 2D pose and vel and each contact surface has 5 associated vars
-        self.len_s = int(6*len(world.get_dynamic_objects()) + self.N*5)
+        self.len_s = int(6*len(world.get_all_objects()) + self.N*5)
         # add accelerations of dynamic objects
-        self.len_s_aug = int(self.len_s + 3.*len(world.get_dynamic_objects()))
+        self.len_s_aug = int(self.len_s + 3.*len(world.get_all_objects()))
         self.len_S = int(self.len_s*self.K)
         self.len_S_aug = int(self.len_s_aug*self.K*self.steps_per_phase)
 
