@@ -1,6 +1,6 @@
 import pdb
 import numpy as np
-from util import calc_obj_dynamics, get_contact_info, add_noise, calc_deriv, get_dist
+from util import calc_obj_dynamics, get_contact_info, add_noise, calc_deriv, get_dist, normalize
 from collections import namedtuple
 from copy import deepcopy
 
@@ -52,6 +52,8 @@ class World(object):
         self.traj_func = traj_func
         self.s0 = self.get_vars()
 
+        self.pi_O = {}
+        self.pi_H = {}
         self.e_O = {}
         self.e_H = {}
         self.e_dot_O = {}
@@ -70,10 +72,10 @@ class World(object):
 
         for (ci, (cont_obj, cont)) in enumerate(self.contact_state.items()):
             r = np.add(cont.ro, object_pose)
-            pi_H = cont_obj.project_point(r)
-            pi_O = self.manip_obj.project_point(r)
-            self.e_H[ci] = np.subtract(pi_H, r)
-            self.e_O[ci] = np.subtract(pi_O,r)
+            self.pi_H[ci] = cont_obj.project_point(r)
+            self.pi_O[ci] = self.manip_obj.project_point(r)
+            self.e_H[ci] = np.subtract(self.pi_H[ci], r)
+            self.e_O[ci] = np.subtract(self.pi_O[ci],r)
 
             if world_tm1 is None:
                 self.e_dot_H[ci] = np.array([0., 0.])
@@ -255,7 +257,12 @@ class Circle(Object):
     def project_point(self, point):
         origin_to_point = np.subtract(point[:2], np.array([self.pose.x,self.pose.y]))
         origin_to_point /= np.linalg.norm(origin_to_point)
-
         closest_point = np.array([self.pose.x, self.pose.y]) + (origin_to_point * self.radius)
-
         return closest_point
+
+    # get a normal vector in the world frame directed from the center of this object
+    # to the given point
+    def get_surface_normal(self, point):
+        origin_to_point = np.subtract(point, [self.pose.x, self.pose.y])
+        n = normalize(origin_to_point)
+        return n

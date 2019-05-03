@@ -21,6 +21,12 @@ def save_run(file_name, p, world, phase_info):
         pickle.dump(data, handle)
     print('Saved run to', fname)
 
+def normalize(vec):
+    mag = np.linalg.norm(vec)
+    if mag == 0:
+        return vec
+    return np.divide(vec, mag)
+
 def calc_deriv(x1, x0, delta):
     return np.divide(np.subtract(x1,x0),delta)
 
