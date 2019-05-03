@@ -47,20 +47,7 @@ def L(S, goal, world, p, phase=0):
         # calc change in linear momentum
         oa = world_t.manip_obj.accel
         p_dot = np.multiply(p.mass,[oa.x,oa.y])
-
-        # calc sum of moments on object
-        # TODO: correct calc of I (moment of inertia)
-        I = p.mass
-        m_tot = np.array([0.0,0.0])
-        for cont in world_t.contact_state.values():
-            # transform to be relative to object COM
-            m_tot += np.cross(cont.c*np.array(cont.f), np.array(cont.ro))
-
-        # calc change in angular momentum
-        l_dot = I*oa[2]
-
-        # removing angular momentum conservation until roj vars optimized through L_CI
-        newton_cost = np.linalg.norm(f_tot - p_dot)**2 #+ np.linalg.norm(m_tot - l_dot)**2
+        newton_cost = np.linalg.norm(f_tot - p_dot)**2
 
         force_reg_cost = 0
         for cont in world_t.contact_state.values():
@@ -98,7 +85,7 @@ def L(S, goal, world, p, phase=0):
         # don't have a central hand so use grippers individually)
         o_dotdot = world_t.manip_obj.accel
         g1_dotdot = world_t.hands[0].accel
-        g2_dotdot = world_t.hands[1].accel#get_gripper2_accel(s)
+        g2_dotdot = world_t.hands[1].accel
 
         accel_cost = p.lamb*(np.linalg.norm(o_dotdot)**2 + np.linalg.norm(g1_dotdot)**2
                     + np.linalg.norm(g2_dotdot)**2)
@@ -118,13 +105,13 @@ def L(S, goal, world, p, phase=0):
     return total_cost
 
 #### MAIN FUNCTION ####
-def CIO(goal, world, p, single=False):
+def CIO(goal, world, p, single=False, start_phase=0):
     if single:
         # FOR TESTING A SINGLE traj
         S = world.traj_func(world, goal, p)
         S_noise = add_noise(S)
         visualize_result(world, goal, p, 'initial.gif', S_noise)
-        tot_cost = L(S, goal, world, p)
+        tot_cost = L(S, goal, world, p, start_phase)
         print_final(*function_costs)
         return {}
 
@@ -138,7 +125,7 @@ def CIO(goal, world, p, single=False):
     bounds = get_bounds(world, p)
     ret_info = {}
     x_init = S_noise
-    for phase in range(len(p.phase_weights)):
+    for phase in range(start_phase, len(p.phase_weights)):
         print('BEGINNING PHASE:', phase)
         p.print_phase_weights(phase)
         res = minimize(fun=L, x0=x_init, args=(goal, world, p, phase), \
