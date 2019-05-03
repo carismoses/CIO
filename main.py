@@ -18,7 +18,6 @@ def main(args):
     contact_state = {finger0 : Contact(f=(0.0, 0.0), ro=(-7., -7.), c=.5),
                      finger1 : Contact(f=(0.0, 0.0), ro=(7., -7.), c=.5)}
     goal = Position(5.0, 20.0)
-    #goal = LinearVelocity(0.0, 0.0)
 
     world = World(manip_obj, [finger0, finger1], contact_state)
 
