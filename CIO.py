@@ -2,15 +2,7 @@
 from scipy.optimize import fmin_l_bfgs_b, minimize
 import numpy as np
 from world import WorldTraj
-from util import print_final, visualize_result, get_bounds, add_noise, save_run
-
-#### SURFACE NORMALS ####
-def get_normals(angles, p):
-    nj = np.zeros((p.N, 2))
-    for j in range(p.N):
-        norm_angle = angles[j] + np.pi/2
-        nj[j,:] = np.array([np.cos(norm_angle), np.sin(norm_angle)])
-    return nj
+from util import print_final, visualize_result, get_bounds, add_noise, save_run, normalize
 
 #### MAIN OBJECTIVE FUNCTION ####
 def L(S, goal, world, p, phase=0):
@@ -56,21 +48,10 @@ def L(S, goal, world, p, phase=0):
 
         # calc L_cone
         cone_cost = 0.0
-        # get contact surface angles
-        angles = np.zeros((p.N))
-        for (j, cont_obj) in enumerate(world_t.contact_state):
-            # TODO: this only works currently because all contact surfaces are lines...
-            # will need to change if have different shaped contact surfaces
-            angles[j] = cont_obj.pose.theta
-        # get unit normal to contact surfaces at pi_j using surface line
-        nj = get_normals(angles, p)
-        for (j,cont) in enumerate(world_t.contact_state.values()):
-            cosangle_num = np.dot(cont.f, nj[j,:])
-            cosangle_den = np.dot(np.linalg.norm(cont.f), np.linalg.norm(nj[j,:]))
-            if cosangle_den == 0.0: # TODO: is this correct?
-                angle = 0.0
-            else:
-                angle = np.arccos(cosangle_num/cosangle_den)
+        for (j,(cont_obj, cont)) in enumerate(world_t.contact_state.items()):
+            n = cont_obj.get_surface_normal(world_t.pi_H[j])
+            f_n = normalize(cont.f)
+            angle = np.arccos(np.dot(f_n, n))
             cone_cost += max(angle - np.arctan(p.mu), 0)**2
 
         return force_reg_cost + newton_cost + cone_cost
