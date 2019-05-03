@@ -1,7 +1,7 @@
 # CIO implementation
 from scipy.optimize import fmin_l_bfgs_b, minimize
 import numpy as np
-from world import WorldTraj
+from world import WorldTraj, Position, LinearVelocity
 from util import print_final, visualize_result, get_bounds, add_noise, save_run, normalize
 
 #### MAIN OBJECTIVE FUNCTION ####
@@ -58,9 +58,15 @@ def L(S, goal, world, p, phase=0):
     def L_task(t, world_t):
         # task constraint: get object to desired pos
         I = 1 if t == (p.T_steps-1) else 0
-        obj_pos = [world_t.manip_obj.pose.x, world_t.manip_obj.pose.y]
-        goal_pos = [goal.x, goal.y]
-        task_cost = I*np.linalg.norm(np.subtract(obj_pos, goal_pos))**2
+        task_cost = 0
+        if type(goal) == Position:
+            obj_pos = [world_t.manip_obj.pose.x, world_t.manip_obj.pose.y]
+            goal_pos = [goal.x, goal.y]
+            task_cost = I*np.linalg.norm(np.subtract(obj_pos, goal_pos))**2
+        elif type(goal) == LinearVelocity:
+            obj_vel = [world_t.manip_obj.vel.x, world_t.manip_obj.vel.y]
+            goal_vel = [goal.x, goal.y]
+            task_cost = I*np.linalg.norm(np.subtract(obj_vel, goal_vel))**2
 
         # small acceleration constraint (supposed to keep hand accel small, but
         # don't have a central hand so use grippers individually)
@@ -95,7 +101,6 @@ def CIO(goal, world, p, single=False, start_phase=0):
         print_final(*function_costs)
         return {}
 
-    print('INITIAL')
     S = world.traj_func(world, goal, p)
     S_noise = add_noise(S)
     visualize_result(world, goal, p, 'initial.gif', S_noise)

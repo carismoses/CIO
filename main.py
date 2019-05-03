@@ -21,10 +21,10 @@ def main(args):
     #goal = LinearVelocity(0.0, 0.0)
 
     world = World(manip_obj, [finger0, finger1], contact_state)
-    phase_weights = [PhaseWeights(w_CI=1., w_physics=0., w_kinematics=0., w_task=0.)]
-                     #PhaseWeights(w_CI=0., w_physics=1., w_kinematics=0., w_task=10.),
-                     #PhaseWeights(w_CI=1., w_physics=1., w_kinematics=0., w_task=10.)]
-    p = Params(world, K=10, delT=.1, phase_weights=phase_weights, lamb=10.e-3, mu=0.9)
+
+    phase_weights=[PhaseWeights(w_CI=0.1, w_physics=0.1, w_kinematics=1.0, w_task=1.0),
+                    PhaseWeights(w_CI=10., w_physics=1., w_kinematics=1., w_task=10.)]
+    p = Params(world, K=2, delT=.1, phase_weights=phase_weights, lamb=10.e-3, mu=0.9)
 
     if args.single:
         phase_info = CIO(goal, world, p, single=True)
