@@ -12,7 +12,7 @@ import warnings
 import pickle
 warnings.filterwarnings("ignore")
 
-np.random.seed(0)
+#np.random.seed(0)
 
 def save_run(file_name, p, world, phase_info):
     fname = file_name + '.pickle'
@@ -38,8 +38,6 @@ def get_bounds(world, p):
     dyn_obj_offset = 6*len(world.get_all_objects())
     for i in range(len(world.contact_state)):
         cis += [dyn_obj_offset + 5*i + 4]
-
-    print(cis)
     bounds = []
     for t in range(p.K):
         for v in range(p.len_s):
@@ -169,11 +167,13 @@ def visualize_result(world, goal, p, outfile, S=None):
             rj_circ = plt.Circle(r, 1., fc='blue', alpha=cont.c)
             plt.gca().add_patch(rj_circ)
 
-            hand_circ = plt.Circle([cont_obj.pose.x, cont_obj.pose.y], cont_obj.radius, fc='black')
+            hand_circ = plt.Circle([cont_obj.pose.x, cont_obj.pose.y], cont_obj.radius, fc='red')
             plt.gca().add_patch(hand_circ)
 
             plt.arrow(r[0], r[1], cont.f[0], cont.f[1],
                 head_width=0.5, head_length=1., fc='k', ec='k')
+
+            plt.plot([cont_obj.pose.x, r[0]], [cont_obj.pose.y, r[1]], c='black', linewidth=1.)
         try:
             rect = plt.Rectangle([obj_pose.x, obj_pose.y], object.width, object.height, fc='r')
             plt.gca().add_patch(rect)
@@ -181,11 +181,6 @@ def visualize_result(world, goal, p, outfile, S=None):
             circ = plt.Circle([obj_pose.x, obj_pose.y], object.radius, fc='r')
             plt.gca().add_patch(circ)
 
-        '''
-        # plots a circle at the center of the object
-        obj_origin = plt.Circle([obj_pose.x, obj_pose.y], 1., fc='gray')
-        plt.gca().add_patch(obj_origin)
-        '''
         goal_circ = plt.Circle(goal[:2], 1., fc='g')
         plt.gca().add_patch(goal_circ)
 
@@ -194,8 +189,8 @@ def visualize_result(world, goal, p, outfile, S=None):
         plt.arrow(obj_pose.x, obj_pose.y, f_contact[0], f_contact[1],
             head_width=0.5, head_length=1., fc='k', ec='k')
         '''
-        plt.xlim((-10., 55))
-        plt.ylim((-10., 55))
+        plt.xlim((-20., 30))
+        #plt.ylim((-10., 30)) # i think this is set relative to xlim
         plt.tight_layout()
         plt.axes().set_aspect('equal', 'datalim')
         image_filename = os.path.join(temp_dirpath, '{}.png'.format(t))

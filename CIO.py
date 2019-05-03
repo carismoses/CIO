@@ -32,9 +32,9 @@ def L(S, goal, world, p, phase=0):
 
     def L_physics(t, world_t):
         # calculate sum of forces on object
-        f_tot = np.array([0.0, 0.0])
+        f_tot = [0.0, 0.0]
         for cont in world_t.contact_state.values():
-            f_tot += cont.c*np.array(cont.f)
+            f_tot = np.add(f_tot, cont.c*cont.f)
 
         # calc change in linear momentum
         oa = world_t.manip_obj.accel
@@ -53,23 +53,22 @@ def L(S, goal, world, p, phase=0):
             f_n = normalize(cont.f)
             angle = np.arccos(np.dot(f_n, n))
             cone_cost += max(angle - np.arctan(p.mu), 0)**2
-
         return force_reg_cost + newton_cost + cone_cost
 
     def L_task(t, world_t):
         # task constraint: get object to desired pos
         I = 1 if t == (p.T_steps-1) else 0
-        obj_pose = world_t.manip_obj.pose
-        task_cost = I*np.linalg.norm(np.subtract(obj_pose, goal))**2
+        obj_pos = [world_t.manip_obj.pose.x, world_t.manip_obj.pose.y]
+        goal_pos = [goal.x, goal.y]
+        task_cost = I*np.linalg.norm(np.subtract(obj_pos, goal_pos))**2
 
         # small acceleration constraint (supposed to keep hand accel small, but
         # don't have a central hand so use grippers individually)
-        o_dotdot = world_t.manip_obj.accel
-        g1_dotdot = world_t.hands[0].accel
-        g2_dotdot = world_t.hands[1].accel
+        accel_cost = 0.0
+        for obj in world_t.get_all_objects():
+            accel_cost += np.linalg.norm([obj.accel.x, obj.accel.y])**2
+        accel_cost = p.lamb*accel_cost
 
-        accel_cost = p.lamb*(np.linalg.norm(o_dotdot)**2 + np.linalg.norm(g1_dotdot)**2
-                    + np.linalg.norm(g2_dotdot)**2)
         return accel_cost + task_cost
 
     world_traj = WorldTraj(S, world, p)
@@ -109,7 +108,7 @@ def CIO(goal, world, p, single=False, start_phase=0):
     for phase in range(start_phase, len(p.phase_weights)):
         print('BEGINNING PHASE:', phase)
         p.print_phase_weights(phase)
-        res = minimize(fun=L, x0=x_init, args=(goal, world, p, phase), \
+        res = minimize(fun=L, x0=x_init, args=(goal, world, p, phase),
                 method='L-BFGS-B', bounds=bounds, options={'eps': 10.e-3})
         x_final = res['x']
         nit = res['nit']

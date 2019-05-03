@@ -1,12 +1,40 @@
 import pdb
 import numpy as np
-from util import calc_obj_dynamics, get_contact_info, add_noise, calc_deriv, get_dist, normalize
+from util import calc_obj_dynamics, get_contact_info, calc_deriv, get_dist, normalize
 from collections import namedtuple
 from copy import deepcopy
 
+"""
+Position Attributes
+-----
+x : float
+    x position
+y : float
+    y position
+"""
+Position = namedtuple('Position', 'x y')
 Pose = namedtuple('Pose', 'x y theta')
+"""
+LinearVelocity Attributes
+-----
+x : float
+    linear velocity in x direction
+y : float
+    linear velocity in y direction
+"""
+LinearVelocity = namedtuple('LinearVelocity', 'x y')
 Velocity = namedtuple('Velocity', 'x y theta')
 Acceleration = namedtuple('Acceleration', 'x y theta')
+"""
+Contact Attributes
+-----
+f : tuple[2]
+    x and y force
+ro : tuple[2]
+    position of applied force in the frame of the manipulated object
+c : float in [0,1]
+    the probability of being in contact
+"""
 Contact = namedtuple('Contact', 'f ro c')
 
 class WorldTraj(object):
@@ -44,10 +72,19 @@ def stationary_traj(world, goal, p):
     return S
 
 class World(object):
-    def __init__(self, manip_obj=None, hands=[], contact_state={}, \
-                    traj_func=stationary_traj):
+    def __init__(self, manip_obj, fingers, contact_state, traj_func=stationary_traj):
+        """
+        World Parameters
+        -----
+        manip_obj : Circle
+            the manipulated object
+        fingers : list of Circle
+            a list of Circle objects representing fingers
+        contact_state : dict[Circle:Contact]
+            a dictionary describing the contact state for each finger
+        """
         self.manip_obj = manip_obj
-        self.hands = hands
+        self.fingers = fingers
         self.contact_state = contact_state
         self.traj_func = traj_func
         self.s0 = self.get_vars()
@@ -101,7 +138,7 @@ class World(object):
         return s0
 
     def get_all_objects(self):
-        return [self.manip_obj] + self.hands
+        return [self.manip_obj] + self.fingers
 
 # world origin is left bottom with 0 deg being along the x-axis (+ going ccw), all poses are in world frame
 class Object(object):
@@ -129,8 +166,9 @@ class Object(object):
         return max_col_dist
 
 class Line(Object):
-    def __init__(self, length = 10.0, pose = Pose(0.0,0.0,0.0), vel = Velocity(0.0, 0.0, 0.0), step_size = 0.5):
+    def __init__(self, length, pos, vel = Velocity(0.0, 0.0, 0.0), step_size = 0.5):
         self.length = length
+        pose = Pose(pos.x, pos.y, 0.) # not using orientations yet
         super(Line,self).__init__(pose, vel, step_size)
 
     def discretize(self):
@@ -180,9 +218,9 @@ class Line(Object):
 
         # check if point is on line segment, otherwise return closest endpoint
         endpoints = self.get_endpoints()
-        if not (proj_point[0] <= max(endpoints[0][0], endpoints[1][0]) and\
-            proj_point[0] >= min(endpoints[0][0], endpoints[1][0]) and\
-            proj_point[1] <= max(endpoints[0][1], endpoints[1][1]) and\
+        if not (proj_point[0] <= max(endpoints[0][0], endpoints[1][0]) and
+            proj_point[0] >= min(endpoints[0][0], endpoints[1][0]) and
+            proj_point[1] <= max(endpoints[0][1], endpoints[1][1]) and
             proj_point[1] >= min(endpoints[0][1], endpoints[1][1])):
 
             dist0 = get_dist(proj_point, endpoints[0])
@@ -194,10 +232,11 @@ class Line(Object):
         return proj_point
 
 class Rectangle(Object):
-    def __init__(self, width = 10.0, height = 10.0, pose = Pose(0.0,0.0,0.0), \
-                vel = Velocity(0.0, 0.0, 0.0), step_size = 0.5):
+    def __init__(self, width, height, pos, vel = Velocity(0.0, 0.0, 0.0),
+                    step_size = 0.5):
         self.width = width
         self.height = height
+        pose = Pose(pos.x, pos.y, 0.0) # not using orientations yet
         super(Rectangle,self).__init__(pose, vel, step_size)
         self.lines = self.make_lines() # rectangles are made up of 4 line objects
 
@@ -242,9 +281,21 @@ class Rectangle(Object):
 
 
 class Circle(Object):
-    def __init__(self, radius = 10.0, pose = Pose(0.0,0.0,0.0), vel = Velocity(0.0, 0.0, 0.0), \
+    def __init__(self, radius, pos, vel = LinearVelocity(x=0.0, y=0.0),
                 step_size = 0.5):
+        """
+        Circle Parameters
+        ----------
+        radius : float
+            the radius of the Circle
+        pos : Position
+            the position of the Circle
+        vel : LinearVelocity, optional
+            the linear velocity of the Circle, default = LinearVelocity(x=0)
+        """
         self.radius = radius
+        pose = Pose(pos.x, pos.y, 0.0)
+        vel = Velocity(vel.x, vel.y, 0.0)
         super(Circle,self).__init__(pose, vel, step_size)
 
     def discretize(self):
