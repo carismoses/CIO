@@ -150,7 +150,8 @@ def visualize_result(world, goals, p, outfile, S=None):
     temp_dirpath = tempfile.mkdtemp()
     image_filenames = []
 
-    for (t,world_t) in enumerate(world_traj.worlds):
+    worlds = [world] + world_traj.worlds
+    for (t,world_t) in enumerate(worlds):
         plt.figure()
 
         object = world_t.manip_obj
