@@ -8,7 +8,7 @@ from util import print_final, visualize_result, get_bounds, add_noise, save_run,
 def L(S, goals, world, p, phase=0):
     def L_CI(t, world_t):
         cost = 0
-        for (ci, (cont_obj, cont)) in enumerate(world.contact_state.items()):
+        for (ci, (cont_obj, cont)) in enumerate(world_t.contact_state.items()):
             cost += cont.c*(np.linalg.norm(world_t.e_O[ci])**2 +
                             np.linalg.norm(world_t.e_H[ci])**2 +
                             np.linalg.norm(world_t.e_dot_O[ci])**2 +
