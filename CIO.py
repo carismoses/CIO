@@ -92,17 +92,17 @@ def L(S, goals, world, p, phase=0):
     return total_cost
 
 #### MAIN FUNCTION ####
-def CIO(goals, world, p, single=False, start_phase=0):
+def CIO(goals, world, p, single=False, start_phase=0, traj_data=None):
     if single:
         # FOR TESTING A SINGLE traj
-        S = world.traj_func(world, goals, p)
+        S = world.traj_func(world, goals, p, traj_data)
         S_noise = add_noise(S)
         visualize_result(world, goals, p, 'initial.gif', S_noise)
         tot_cost = L(S, goals, world, p, start_phase)
         print_final(*function_costs)
         return {}
 
-    S = world.traj_func(world, goals, p)
+    S = world.traj_func(world, goals, p, traj_data)
     S_noise = add_noise(S)
     visualize_result(world, goals, p, 'initial.gif', S_noise)
     tot_cost = L(S_noise, goals, world, p)

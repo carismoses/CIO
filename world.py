@@ -65,7 +65,7 @@ class WorldTraj(object):
                 world_t.set_e_vars(self.worlds[t-1], p)
             self.worlds += [world_t]
 
-def stationary_traj(world, goal, p):
+def stationary_traj(world, goal, p, traj_data=None):
     S = np.zeros(p.len_S)
     for k in range(p.K):
         S[k*p.len_s:k*p.len_s+p.len_s] = world.get_vars()
