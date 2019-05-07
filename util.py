@@ -14,12 +14,19 @@ warnings.filterwarnings("ignore")
 
 #np.random.seed(0)
 
-def save_run(file_name, p, world, phase_info):
+def save_run(file_name, goals, world, p, phase_info):
     fname = file_name + '.pickle'
-    data = [p, world, phase_info]
+    data = [goals, world, p, phase_info]
     with open(fname, 'wb') as handle:
         pickle.dump(data, handle)
     print('Saved run to', fname)
+
+def data_from_file(file_name):
+    fname = file_name + '.pickle'
+    with open(fname, 'rb') as handle:
+        goals, world, p, phase_info = pickle.load(handle)
+    print('Read data from', fname)
+    return goals, world, p, phase_info
 
 def normalize(vec):
     mag = np.linalg.norm(vec)
