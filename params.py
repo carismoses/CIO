@@ -16,7 +16,7 @@ w_task : float
 """
 
 class Params(object):
-    def __init__(self, world, K=2, delT=0.1, delT_phase=0.5, mass=1.0,
+    def __init__(self, world, K=2, delT=0.1, delT_keyframe=0.5, mass=1.0,
                     mu=0.9, lamb=10.e-3, phase_weights=[PhaseWeights(w_CI=0.1, w_physics=0.1, w_kinematics=0.0, w_task=1.0),
                     PhaseWeights(w_CI=10., w_physics=1., w_kinematics=0., w_task=10.)], init_traj=None):
         """
@@ -28,7 +28,7 @@ class Params(object):
             the number of keyframes used to represent the trajectory
         delT : float, optional
             the time step used to calculate derivates using finite differences
-        delT_phase : float, optional
+        delT_keyframe : float, optional
             the length of time a keyframe lasts
         mass : float, optional
             the mass (kg) of the manipulated object
@@ -42,7 +42,7 @@ class Params(object):
         """
         self.K = K
         self.delT = delT
-        self.delT_phase = delT_phase
+        self.delT_keyframe = delT_keyframe
         self.mass = mass
         self.mu = mu
         self.lamb = lamb
@@ -50,15 +50,15 @@ class Params(object):
 
         ## DERIVED PARAMETERS
         self.N = len(world.contact_state)
-        self.steps_per_phase = int(self.delT_phase/self.delT)
-        self.T_steps = self.K*self.steps_per_phase
-        self.T_final = self.K*self.delT_phase
+        self.steps_per_keyframe = int(self.delT_keyframe/self.delT)
+        self.T_steps = self.K*self.steps_per_keyframe
+        self.T_final = self.K*self.delT_keyframe
         # each dynamic object has a 2D pose and vel and each contact surface has 5 associated vars
         self.len_s = int(6*len(world.get_all_objects()) + self.N*5)
         # add accelerations of dynamic objects
         self.len_s_aug = int(self.len_s + 3.*len(world.get_all_objects()))
         self.len_S = int(self.len_s*self.K)
-        self.len_S_aug = int(self.len_s_aug*self.K*self.steps_per_phase)
+        self.len_S_aug = int(self.len_s_aug*self.K*self.steps_per_keyframe)
 
     def print_phase_weights(self, phase):
         print('PHASE PARAMETERS:')

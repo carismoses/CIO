@@ -14,7 +14,7 @@ def traj_from_file(world, goal, p, traj_data):
     world_traj = WorldTraj(S_final, world, p)
     for (t, world_t) in enumerate(world_traj.worlds):
         # keyframe, want to update
-        if t % p.steps_per_phase:
+        if t % p.steps_per_keyframe:
             # if the object is moving
             if abs(world_t.manip_obj.vel.y) > 0.:
                 for finger in world_t.fingers:
@@ -40,7 +40,7 @@ def traj_from_file(world, goal, p, traj_data):
     S = np.zeros(p.len_S)
     k = 0
     for (t, world_t) in enumerate(world_traj.worlds):
-        if t % p.steps_per_phase:
+        if t % p.steps_per_keyframe:
             S[k*p.len_s:k*p.len_s+p.len_s] = world_t.get_vars()
             k += 1
     return S
@@ -68,7 +68,7 @@ def main(args):
 
         phase_weights=[PhaseWeights(w_CI=0.1, w_physics=0.1, w_kinematics=.0, w_task=1.0),
                         PhaseWeights(w_CI=10., w_physics=1., w_kinematics=.0, w_task=1.0)]
-        p = Params(world, K=5, delT=.5, delT_phase=1., phase_weights=phase_weights, lamb=10.e-3, mu=0.9)
+        p = Params(world, K=5, delT=.5, delT_keyframe=1., phase_weights=phase_weights, lamb=10.e-3, mu=0.9)
 
     traj_data = None
     if args.from_file:

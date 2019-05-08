@@ -71,12 +71,12 @@ def get_contact_info(s0, S, p, ci, dyn_offset):
         f_right, ro_right, c_right = f_traj_K[k], ro_traj_K[k], c_traj_K[k]
 
         # interpolate the contact forces (linear)
-        f_traj_T[:,(k-1)*p.steps_per_phase:k*p.steps_per_phase+1] = linspace_vectors(f_left, f_right, p.steps_per_phase+1)
+        f_traj_T[:,(k-1)*p.steps_per_keyframe:k*p.steps_per_keyframe+1] = linspace_vectors(f_left, f_right, p.steps_per_keyframe+1)
 
         # interpolate the contact poses (linear)
-        ro_traj_T[:,(k-1)*p.steps_per_phase:k*p.steps_per_phase+1] = linspace_vectors(ro_left, ro_right, p.steps_per_phase+1)
+        ro_traj_T[:,(k-1)*p.steps_per_keyframe:k*p.steps_per_keyframe+1] = linspace_vectors(ro_left, ro_right, p.steps_per_keyframe+1)
 
-        for t in range((k-1)*p.steps_per_phase,k*p.steps_per_phase+1):
+        for t in range((k-1)*p.steps_per_keyframe,k*p.steps_per_keyframe+1):
             c_traj_T[t] = c_traj_K[k]
 
     return f_traj_T, ro_traj_T, c_traj_T
@@ -101,7 +101,7 @@ def calc_obj_dynamics(s0, S, p, index):
     k = 0
     times = np.linspace(0.,p.T_final, p.T_steps+1)
     for t in times:
-        if not t % p.delT_phase: # this is a keyframe
+        if not t % p.delT_keyframe: # this is a keyframe
             pose_traj_T += [pose_traj_K[k]]
             k += 1
         else: # get from spline
