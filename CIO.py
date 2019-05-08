@@ -92,25 +92,26 @@ def L(S, goals, world, p, stage=0):
     return total_cost
 
 #### MAIN FUNCTION ####
-def CIO(goals, world, p, single=False, start_stage=0, traj_data=None):
+def CIO(goals, world, p, single=False, start_stage=0, traj_data=None, gif_tag=''):
     if single:
         # FOR TESTING A SINGLE traj
         S = world.traj_func(world, goals, p, traj_data)
-        S_noise = add_noise(S)
-        visualize_result(world, goals, p, 'initial.gif', S_noise)
+        S = add_noise(S)
+        visualize_result(world, goals, p, 'initial'+gif_tag+'.gif', S)
         tot_cost = L(S, goals, world, p, start_stage)
         print_final(*function_costs)
         return {}
 
     S = world.traj_func(world, goals, p, traj_data)
-    S_noise = add_noise(S)
-    visualize_result(world, goals, p, 'initial.gif', S_noise)
-    tot_cost = L(S_noise, goals, world, p)
+    if start_stage == 0:
+        S = add_noise(S)
+    visualize_result(world, goals, p, 'initial'+gif_tag+'.gif', S)
+    tot_cost = L(S, goals, world, p)
     print_final(*function_costs)
 
     bounds = get_bounds(world, p)
     ret_info = {}
-    x_init = S_noise
+    x_init = S
     for stage in range(start_stage, len(p.stage_weights)):
         print('BEGINNING PHASE:', stage)
         p.print_stage_weights(stage)
@@ -120,7 +121,7 @@ def CIO(goals, world, p, single=False, start_stage=0, traj_data=None):
         nit = res['nit']
         final_cost = res['fun']
 
-        visualize_result(world, goals, p, 'stage_{}.gif'.format(stage), x_final)
+        visualize_result(world, goals, p, 'stage_{}'.format(stage)+gif_tag+'.gif', x_final)
         print_final(*function_costs)
         all_final_costs = function_costs
         ret_info[stage] = world.s0, x_final, final_cost, nit, all_final_costs
