@@ -134,7 +134,7 @@ def linspace_vectors(vec0, vec1, num_steps):
 def add_noise(vec):
     # perturb all vars by gaussian noise
     mean = 0.
-    var = 10.e-2
+    var = 10.**-2
     for j in range(len(vec)):
         vec[j] += np.random.normal(mean, var)
 

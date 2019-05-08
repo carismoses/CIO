@@ -115,7 +115,7 @@ def CIO(goals, world, p, single=False, start_stage=0, traj_data=None):
         print('BEGINNING PHASE:', stage)
         p.print_stage_weights(stage)
         res = minimize(fun=L, x0=x_init, args=(goals, world, p, stage),
-                method='L-BFGS-B', bounds=bounds, options={'eps': 10.e-3})
+                method='L-BFGS-B', bounds=bounds, options={'eps': 10**-3})
         x_final = res['x']
         nit = res['nit']
         final_cost = res['fun']

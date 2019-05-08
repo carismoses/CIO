@@ -16,9 +16,9 @@ w_task : float
 """
 
 class Params(object):
-    def __init__(self, world, K=2, delT=0.1, delT_phase=0.5, mass=1.0,
-                    mu=0.9, lamb=10.e-3, stage_weights=[StageWeights(w_CI=0.1, w_physics=0.1, w_kinematics=0.0, w_task=1.0),
-                    StageWeights(w_CI=10., w_physics=1., w_kinematics=0., w_task=10.)], init_traj=None):
+    def __init__(self, world, K=10, delT=0.05, delT_phase=0.5, mass=1.0,
+                    mu=0.9, lamb=10**-3, stage_weights=[StageWeights(w_CI=0.1, w_physics=0.1, w_kinematics=0.0, w_task=1.0),
+                    StageWeights(w_CI=10.**1, w_physics=10.**0, w_kinematics=0., w_task=10.**1)], init_traj=None):
         """
         Parameters
         ----------
