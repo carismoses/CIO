@@ -1,20 +1,20 @@
 import numpy as np
 from world import World, Circle, Contact, Position, WorldTraj, Pose
-from params import Params, PhaseWeights
+from params import Params, StageWeights
 from CIO import visualize_result, CIO
 from util import save_run, data_from_file
 import argparse
 from collections import OrderedDict
 
 def traj_from_file(world, goal, p, traj_data):
-    goals, world, p, phase_info = traj_data
-    s0, S_final, final_cost, nit, all_final_costs = phase_info[0]
+    goals, world, p, stage_info = traj_data
+    s0, S_final, final_cost, nit, all_final_costs = stage_info[0]
 
     # make a world traj from S_final
     world_traj = WorldTraj(S_final, world, p)
     for (t, world_t) in enumerate(world_traj.worlds):
-        # keyframe, want to update
-        if t % p.steps_per_keyframe:
+        # phase, want to update
+        if t % p.steps_per_phase:
             # if the object is moving
             if abs(world_t.manip_obj.vel.y) > 0.:
                 for finger in world_t.fingers:
@@ -40,7 +40,7 @@ def traj_from_file(world, goal, p, traj_data):
     S = np.zeros(p.len_S)
     k = 0
     for (t, world_t) in enumerate(world_traj.worlds):
-        if t % p.steps_per_keyframe:
+        if t % p.steps_per_phase:
             S[k*p.len_s:k*p.len_s+p.len_s] = world_t.get_vars()
             k += 1
     return S
@@ -50,7 +50,7 @@ def main(args):
         import pdb; pdb.set_trace()
 
     if args.from_file:
-        goals, world, p, phase_info = data_from_file(args.from_file)
+        goals, world, p, stage_info = data_from_file(args.from_file)
         world.traj_func = traj_from_file
     else:
         # objects
@@ -66,22 +66,22 @@ def main(args):
 
         world = World(manip_obj, [finger0, finger1], contact_state)
 
-        phase_weights=[PhaseWeights(w_CI=0.1, w_physics=0.1, w_kinematics=.0, w_task=1.0),
-                        PhaseWeights(w_CI=10., w_physics=1., w_kinematics=.0, w_task=1.0)]
-        p = Params(world, K=5, delT=.5, delT_keyframe=1., phase_weights=phase_weights, lamb=10.e-3, mu=0.9)
+        stage_weights=[StageWeights(w_CI=0.1, w_physics=0.1, w_kinematics=.0, w_task=1.0),
+                        StageWeights(w_CI=10., w_physics=1., w_kinematics=.0, w_task=1.0)]
+        p = Params(world, K=5, delT=.5, delT_phase=1., stage_weights=stage_weights, lamb=10.e-3, mu=0.9)
 
     traj_data = None
     if args.from_file:
-        traj_data = goals, world, p, phase_info
+        traj_data = goals, world, p, stage_info
 
-    start_phase = 0
-    if args.start_phase:
-        start_phase = args.start_phase
+    start_stage = 0
+    if args.start_stage:
+        start_stage = args.start_stage
 
-    phase_info = CIO(goals, world, p, start_phase=start_phase, traj_data=traj_data, single=args.single)
+    stage_info = CIO(goals, world, p, start_stage=start_stage, traj_data=traj_data, single=args.single)
 
     if args.save:
-        save_run(args.save, goals, world, p, phase_info)
+        save_run(args.save, goals, world, p, stage_info)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -89,6 +89,6 @@ if __name__ == '__main__':
     parser.add_argument('--single', action='store_true')
     parser.add_argument('--save', type=str)
     parser.add_argument('--from-file', type=str)
-    parser.add_argument('--start-phase', type=int)
+    parser.add_argument('--start-stage', type=int)
     args = parser.parse_args()
     main(args)

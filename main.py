@@ -1,6 +1,6 @@
 import numpy as np
 from world import World, Circle, Contact, Position
-from params import Params, PhaseWeights
+from params import Params, StageWeights
 from CIO import visualize_result, CIO
 from util import save_run
 import argparse
@@ -22,17 +22,17 @@ def main(args):
 
     world = World(manip_obj, [finger0, finger1], contact_state)
 
-    phase_weights=[PhaseWeights(w_CI=0.1, w_physics=0.1, w_kinematics=1.0, w_task=1.0),
-                    PhaseWeights(w_CI=10., w_physics=1., w_kinematics=1., w_task=10.)]
-    p = Params(world, K=2, delT=.1, phase_weights=phase_weights, lamb=10.e-3, mu=0.9)
+    stage_weights=[StageWeights(w_CI=0.1, w_physics=0.1, w_kinematics=1.0, w_task=1.0),
+                    StageWeights(w_CI=10., w_physics=1., w_kinematics=1., w_task=10.)]
+    p = Params(world, K=2, delT=.1, stage_weights=stage_weights, lamb=10.e-3, mu=0.9)
 
     if args.single:
-        phase_info = CIO(goals, world, p, single=True)
+        stage_info = CIO(goals, world, p, single=True)
     else:
-        phase_info = CIO(goals, world, p)
+        stage_info = CIO(goals, world, p)
 
     if args.save:
-        save_run(args.save, p, world, phase_info)
+        save_run(args.save, p, world, stage_info)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

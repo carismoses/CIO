@@ -5,7 +5,7 @@ from world import WorldTraj, Position, LinearVelocity
 from util import print_final, visualize_result, get_bounds, add_noise, save_run, normalize
 
 #### MAIN OBJECTIVE FUNCTION ####
-def L(S, goals, world, p, phase=0):
+def L(S, goals, world, p, stage=0):
     def L_CI(t, world_t):
         cost = 0
         for (ci, (cont_obj, cont)) in enumerate(world_t.contact_state.items()):
@@ -81,10 +81,10 @@ def L(S, goals, world, p, phase=0):
     world_traj = WorldTraj(S, world, p)
     total_cost, ci, phys, kinem, task = 0.0, 0.0, 0.0, 0.0, 0.0
     for (t, world_t) in enumerate(world_traj.worlds):
-        ci += p.phase_weights[phase].w_CI*L_CI(t, world_t)
-        phys += p.phase_weights[phase].w_physics*L_physics(t, world_t)
-        kinem += 0.#p.phase_weights[phase].w_kinematics*L_kinematics(t, world_t)
-        task += p.phase_weights[phase].w_task*L_task(t, world_t)
+        ci += p.stage_weights[stage].w_CI*L_CI(t, world_t)
+        phys += p.stage_weights[stage].w_physics*L_physics(t, world_t)
+        kinem += 0.#p.stage_weights[stage].w_kinematics*L_kinematics(t, world_t)
+        task += p.stage_weights[stage].w_task*L_task(t, world_t)
     total_cost = ci + phys + kinem + task
 
     global function_costs
@@ -92,13 +92,13 @@ def L(S, goals, world, p, phase=0):
     return total_cost
 
 #### MAIN FUNCTION ####
-def CIO(goals, world, p, single=False, start_phase=0, traj_data=None):
+def CIO(goals, world, p, single=False, start_stage=0, traj_data=None):
     if single:
         # FOR TESTING A SINGLE traj
         S = world.traj_func(world, goals, p, traj_data)
         S_noise = add_noise(S)
         visualize_result(world, goals, p, 'initial.gif', S_noise)
-        tot_cost = L(S, goals, world, p, start_phase)
+        tot_cost = L(S, goals, world, p, start_stage)
         print_final(*function_costs)
         return {}
 
@@ -111,18 +111,18 @@ def CIO(goals, world, p, single=False, start_phase=0, traj_data=None):
     bounds = get_bounds(world, p)
     ret_info = {}
     x_init = S_noise
-    for phase in range(start_phase, len(p.phase_weights)):
-        print('BEGINNING PHASE:', phase)
-        p.print_phase_weights(phase)
-        res = minimize(fun=L, x0=x_init, args=(goals, world, p, phase),
+    for stage in range(start_stage, len(p.stage_weights)):
+        print('BEGINNING PHASE:', stage)
+        p.print_stage_weights(stage)
+        res = minimize(fun=L, x0=x_init, args=(goals, world, p, stage),
                 method='L-BFGS-B', bounds=bounds, options={'eps': 10.e-3})
         x_final = res['x']
         nit = res['nit']
         final_cost = res['fun']
 
-        visualize_result(world, goals, p, 'phase_{}.gif'.format(phase), x_final)
+        visualize_result(world, goals, p, 'stage_{}.gif'.format(stage), x_final)
         print_final(*function_costs)
         all_final_costs = function_costs
-        ret_info[phase] = world.s0, x_final, final_cost, nit, all_final_costs
+        ret_info[stage] = world.s0, x_final, final_cost, nit, all_final_costs
         x_init = x_final
     return ret_info
