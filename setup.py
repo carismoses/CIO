@@ -7,5 +7,5 @@ setup(
     author='Caris Moses',
     author_email='carism@mit.edu',
     packages=['cio',],
-    long_description=open('README.txt').read(),
+    long_description=open('README.md').read(),
 )
