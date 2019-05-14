@@ -1,4 +1,7 @@
-from distutils.core import setup
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
 
 setup(
     name='CIO',
@@ -8,10 +11,8 @@ setup(
     author='Caris Moses',
     author_email='carism@mit.edu',
     packages=['cio',],
-    python_requires='>3',
+    python_requires='>3.0',
     install_requires=[
-         'shutil',
-         'tempfile',
          'imageio',
          'scipy',
          'jupyter',
