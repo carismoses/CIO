@@ -44,7 +44,7 @@ If you followed the local installation, running the minimal example with the fol
 ```
 python3 minimal.py --debug
 ```
-To create a breakpoint, the paths have to start from the root of the source code. For example to set a breakpoint T line 80 in CIO/cio/world.py use the following command within pdb
+To create a breakpoint, the paths have to start from the root of the source code. For example to set a breakpoint at line 80 in CIO/cio/world.py use the following command within pdb
 ```
-break cio\world.py:80
+break cio/world:80
 ```
