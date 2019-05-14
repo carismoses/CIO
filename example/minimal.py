@@ -1,8 +1,8 @@
 import numpy as np
-from cio.world import World, Circle, Contact, Position
+from cio.world import World, Circle
 from cio.params import Params, StageWeights
 from cio.optimization import CIO
-from cio.util import save_run, visualize_result
+from cio.util import save_run, visualize_result, Position, Contact
 import argparse
 from collections import OrderedDict
 
