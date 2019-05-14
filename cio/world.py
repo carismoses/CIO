@@ -105,9 +105,9 @@ class Object(object):
         return n
 
 class Line(Object):
-    def __init__(self, length, pos, vel = Velocity(0.0, 0.0, 0.0), step_size = 0.5):
+    def __init__(self, length, pose, vel = Velocity(0.0, 0.0, 0.0), step_size = 0.5):
         self.length = length
-        pose = Pose(pos.x, pos.y, 0.) # not using orientations yet
+        self.pose = pose
         super(Line,self).__init__(pose, vel, step_size)
 
     def discretize(self):
@@ -115,7 +115,7 @@ class Line(Object):
         points = np.array((N_points,2))
         points[0,:], points[N_points-1,:] = self.get_endpoints()
         for i in range(1,N_points-1):
-            points[i,:] = points[i-1,:] + self.step_size*np.array((np.cos(self.pose.theta), np.sin(self.angle)))
+            points[i,:] = points[i-1,:] + self.step_size*np.array((np.cos(self.pose.theta), np.sin(self.pose.theta)))
         return points
 
     def check_inside(self, point):
@@ -125,7 +125,7 @@ class Line(Object):
         p0 = np.array([self.pose.x, self.pose.y])
         endpoint0 = p0
         endpoint1 = p0 + self.length*np.array((np.cos(self.pose.theta), np.sin(self.pose.theta)))
-        return (endpoint0, endpoint1)
+        return (Position(*endpoint0), Position(*endpoint1))
 
     def line_eqn(self):
         # check for near straight lines
@@ -170,6 +170,7 @@ class Line(Object):
                 proj_point = endpoints[1]
         return proj_point
 
+# pose is the center of the rectangle
 class Rectangle(Object):
     def __init__(self, width, height, pos, vel = LinearVelocity(0.0, 0.0),
                     step_size = 0.5):
@@ -187,16 +188,19 @@ class Rectangle(Object):
         pass#TODO
 
     # defines list of lines in clockwise starting from left line
+    # the pose of a line is at an endpoint
     def make_lines(self):
         lines = []
-        pose = self.pose
-        angle = self.pose.theta
+        line_pose = Pose(self.pose.x-self.width/2,
+                            self.pose.y-self.height/2,
+                            self.pose.theta)
         length = self.height
         for i in range(4):
-            line = Line(pose, angle, length)
+            line = Line(length, line_pose)
             lines += [line]
-            (_, pose) = line.get_endpoints()
-            angle = angle - np.pi/2
+            (_, pos) = line.get_endpoints()
+            angle = line_pose.theta - np.pi/2
+            line_pose = Pose(pos.x, pos.y, angle)
             if length == self.height:
                 length = self.width
             else:
@@ -219,7 +223,7 @@ class Rectangle(Object):
         closest_point = sum(np.multiply(nu,p_nearest))
         return closest_point
 
-
+# pose is at the center of the circle
 class Circle(Object):
     def __init__(self, radius, pos, vel = LinearVelocity(x=0.0, y=0.0),
                 step_size = 0.5):

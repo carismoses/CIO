@@ -251,7 +251,8 @@ def visualize_result(world, goals, p, outfile, S=None):
 
             plt.plot([cont_obj.pose.x, r[0]], [cont_obj.pose.y, r[1]], c='black', linewidth=1.)
         try:
-            rect = plt.Rectangle([obj_pose.x, obj_pose.y], object.width, object.height, fc='r')
+            rect = plt.Rectangle([obj_pose.x-object.width/2, obj_pose.y-object.height/2],
+                                                object.width, object.height, fc='r')
             plt.gca().add_patch(rect)
         except AttributeError:
             circ = plt.Circle([obj_pose.x, obj_pose.y], object.radius, fc='r')
@@ -268,8 +269,8 @@ def visualize_result(world, goals, p, outfile, S=None):
         plt.arrow(obj_pose.x, obj_pose.y, f_contact[0], f_contact[1],
             head_width=0.5, head_length=1., fc='k', ec='k')
         '''
-        plt.xlim((-20., 30))
-        plt.ylim((-10., 30)) # the second arg (max) is set relative to xlim and ylim.min
+        plt.xlim((-25., 25))
+        plt.ylim((-15., 30)) # the second arg (max) is set relative to xlim and ylim.min
         plt.tight_layout()
         plt.axes().set_aspect('equal', 'datalim')
         image_filename = os.path.join(temp_dirpath, '{}.png'.format(t))
