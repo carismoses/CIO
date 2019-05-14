@@ -13,7 +13,7 @@ git clone git@github.com:carismoses/CIO.git
 cd CIO
 python3 setup.py develop
 ```
-installing the package this ways allows you to later uninstall with the following command
+Installing the package this ways allows you to later uninstall with the following command
 ```
 python3 setup.py develop --uninstall
 ```
