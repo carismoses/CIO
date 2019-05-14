@@ -92,6 +92,8 @@ def L(S, goals, world, p, stage=0):
     return total_cost
 
 #### MAIN FUNCTION ####
+from collections import namedtuple
+PhaseInfo = namedtuple('PhaseInfo', 's0, x_final final_cost nit all_final_costs')
 def CIO(goals, world, p, single=False, start_stage=0, traj_data=None, gif_tag=''):
     if single:
         # FOR TESTING A SINGLE traj
@@ -124,6 +126,6 @@ def CIO(goals, world, p, single=False, start_stage=0, traj_data=None, gif_tag=''
         visualize_result(world, goals, p, 'stage_{}'.format(stage)+gif_tag+'.gif', x_final)
         print_final(*function_costs)
         all_final_costs = function_costs
-        ret_info[stage] = world.s0, x_final, final_cost, nit, all_final_costs
+        ret_info[phase] = PhaseInfo(world.s0, x_final, final_cost, nit, all_final_costs)
         x_init = x_final
     return ret_info
