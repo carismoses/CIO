@@ -1,5 +1,3 @@
-import sys
-sys.path.append('/Users/carismoses/CIO')
 import numpy as np
 from cio.world import World, Circle, Contact, Position
 from cio.params import Params, StageWeights
