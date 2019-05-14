@@ -74,7 +74,7 @@ def generate_world_traj(S, world, p):
         else:
             world_t.set_e_vars(worlds[t-1], p)
         worlds += [world_t]
-        return worlds
+    return worlds
 
 def stationary_traj(world, goal, p, traj_data=None):
     S = np.zeros(p.len_S)
