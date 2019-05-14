@@ -1,8 +1,8 @@
 # CIO implementation
 from scipy.optimize import fmin_l_bfgs_b, minimize
 import numpy as np
-from world import WorldTraj, Position, LinearVelocity
-from util import print_final, visualize_result, get_bounds, add_noise, save_run, normalize
+from cio.world import Position, LinearVelocity
+from cio.util import print_final, visualize_result, get_bounds, add_noise, save_run, normalize, generate_world_traj
 
 #### MAIN OBJECTIVE FUNCTION ####
 def L(S, goals, world, p, stage=0):
@@ -78,9 +78,9 @@ def L(S, goals, world, p, stage=0):
 
         return accel_cost + task_cost
 
-    world_traj = WorldTraj(S, world, p)
+    world_traj = generate_world_traj(S, world, p)
     total_cost, ci, phys, kinem, task = 0.0, 0.0, 0.0, 0.0, 0.0
-    for (t, world_t) in enumerate(world_traj.worlds):
+    for (t, world_t) in enumerate(world_traj):
         ci += p.stage_weights[stage].w_CI*L_CI(t, world_t)
         phys += p.stage_weights[stage].w_physics*L_physics(t, world_t)
         kinem += 0.#p.stage_weights[stage].w_kinematics*L_kinematics(t, world_t)
@@ -93,7 +93,7 @@ def L(S, goals, world, p, stage=0):
 
 #### MAIN FUNCTION ####
 from collections import namedtuple
-PhaseInfo = namedtuple('PhaseInfo', 's0, x_final final_cost nit all_final_costs')
+StageInfo = namedtuple('StageInfo', 's0, x_final final_cost nit all_final_costs')
 def CIO(goals, world, p, single=False, start_stage=0, traj_data=None, gif_tag=''):
     if single:
         # FOR TESTING A SINGLE traj
@@ -126,6 +126,6 @@ def CIO(goals, world, p, single=False, start_stage=0, traj_data=None, gif_tag=''
         visualize_result(world, goals, p, 'stage_{}'.format(stage)+gif_tag+'.gif', x_final)
         print_final(*function_costs)
         all_final_costs = function_costs
-        ret_info[phase] = PhaseInfo(world.s0, x_final, final_cost, nit, all_final_costs)
+        ret_info[stage] = StageInfo(world.s0, x_final, final_cost, nit, all_final_costs)
         x_init = x_final
     return ret_info

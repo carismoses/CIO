@@ -1,75 +1,7 @@
 import pdb
 import numpy as np
-from util import calc_obj_dynamics, get_contact_info, calc_deriv, get_dist, normalize
-from collections import namedtuple
-from copy import deepcopy
-
-"""
-Position Attributes
------
-x : float
-    x position
-y : float
-    y position
-"""
-Position = namedtuple('Position', 'x y')
-Pose = namedtuple('Pose', 'x y theta')
-"""
-LinearVelocity Attributes
------
-x : float
-    linear velocity in x direction
-y : float
-    linear velocity in y direction
-"""
-LinearVelocity = namedtuple('LinearVelocity', 'x y')
-Velocity = namedtuple('Velocity', 'x y theta')
-Acceleration = namedtuple('Acceleration', 'x y theta')
-"""
-Contact Attributes
------
-f : tuple[2]
-    x and y force
-ro : tuple[2]
-    position of applied force in the frame of the manipulated object
-c : float in [0,1]
-    the probability of being in contact
-"""
-Contact = namedtuple('Contact', 'f ro c')
-
-class WorldTraj(object):
-    def __init__(self, S, world, p):
-        # get dyanamic and contact info from S
-        dyn_info = {}
-        for (i, dyn_obj) in enumerate(world.get_all_objects()):
-            poses, vels, accels = calc_obj_dynamics(world.s0, S, p, i)
-            dyn_info[i] = [poses, vels, accels]
-
-        dyn_offset = len(world.get_all_objects())*6
-        cont_info = {}
-        for (ci, cont_obj) in enumerate(world.contact_state):
-            fs, ros, cs = get_contact_info(world.s0, S, p, ci, dyn_offset)
-            cont_info[ci] = [fs, ros, cs]
-
-        # fill into list of new worlds
-        self.worlds = []
-        for t in range(p.T_steps+1):
-            world_t = deepcopy(world)
-            for i in range(len(world_t.get_all_objects())):
-                world_t.set_dynamics(i,dyn_info[i][0][t], dyn_info[i][1][t], dyn_info[i][2][t])
-            for ci in range(len(world_t.contact_state)):
-                world_t.set_contact_state(ci, cont_info[ci][0][:,t], cont_info[ci][1][:,t], cont_info[ci][2][t])
-            if t == 0:
-                world_t.set_e_vars(None, p)
-            else:
-                world_t.set_e_vars(self.worlds[t-1], p)
-            self.worlds += [world_t]
-
-def stationary_traj(world, goal, p, traj_data=None):
-    S = np.zeros(p.len_S)
-    for k in range(p.K):
-        S[k*p.len_s:k*p.len_s+p.len_s] = world.get_vars()
-    return S
+from cio.util import calc_deriv, get_dist, normalize, stationary_traj, Position, \
+                            Pose, LinearVelocity, Velocity, Acceleration, Contact
 
 class World(object):
     def __init__(self, manip_obj, fingers, contact_state, traj_func=stationary_traj):

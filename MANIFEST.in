@@ -1,0 +1,2 @@
+recursive-include notebook_files/
+include notebook_tutorial.ipynb
