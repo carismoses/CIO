@@ -15,7 +15,7 @@ python3 setup.py install
 ```
 installing the package this ways allows you to later uninstall with the following command
 ```
-python3 setup.py uninstall
+python3 setup.py develop --uninstall
 ```
 There is currently no equivalent for uninstalling if you use ```pip install -e .``` for the local installation
 
