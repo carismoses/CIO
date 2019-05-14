@@ -12,15 +12,15 @@ def main(args):
 
     # objects
     radius = 5.0
-    manip_obj = Circle(radius, Position(5.0,radius))
-    finger0 = Circle(1.0, Position(-5.0, -5.0))
-    finger1 = Circle(1.0, Position(15.0, -5.0))
+    manip_obj = Circle(radius, Position(0.,0.))
+    finger0 = Circle(1.0, Position(-10.0, -10.0))
+    finger1 = Circle(1.0, Position(10.0, -10.0))
 
     # initial contact information
     contact_state = OrderedDict([(finger0, Contact(f=(0.0, 0.0), ro=(-7., -7.), c=.5)),
                                  (finger1, Contact(f=(0.0, 0.0), ro=(7., -7.), c=.5))])
 
-    goals = [Position(5.0, 20.0)]
+    goals = [Position(0.0, 20.0)]
 
     world = World(manip_obj, [finger0, finger1], contact_state)
 
