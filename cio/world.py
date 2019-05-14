@@ -97,6 +97,13 @@ class Object(object):
                 max_col_dist = col_dist
         return max_col_dist
 
+    # get a normal vector in the world frame directed from the center of this object
+    # to the given point
+    def get_surface_normal(self, point):
+        origin_to_point = np.subtract(point, [self.pose.x, self.pose.y])
+        n = normalize(origin_to_point)
+        return n
+
 class Line(Object):
     def __init__(self, length, pos, vel = Velocity(0.0, 0.0, 0.0), step_size = 0.5):
         self.length = length
@@ -164,11 +171,12 @@ class Line(Object):
         return proj_point
 
 class Rectangle(Object):
-    def __init__(self, width, height, pos, vel = Velocity(0.0, 0.0, 0.0),
+    def __init__(self, width, height, pos, vel = LinearVelocity(0.0, 0.0),
                     step_size = 0.5):
         self.width = width
         self.height = height
         pose = Pose(pos.x, pos.y, 0.0) # not using orientations yet
+        vel = Velocity(vel.x, vel.y, 0.0)
         super(Rectangle,self).__init__(pose, vel, step_size)
         self.lines = self.make_lines() # rectangles are made up of 4 line objects
 
@@ -242,10 +250,3 @@ class Circle(Object):
         origin_to_point /= np.linalg.norm(origin_to_point)
         closest_point = np.array([self.pose.x, self.pose.y]) + (origin_to_point * self.radius)
         return closest_point
-
-    # get a normal vector in the world frame directed from the center of this object
-    # to the given point
-    def get_surface_normal(self, point):
-        origin_to_point = np.subtract(point, [self.pose.x, self.pose.y])
-        n = normalize(origin_to_point)
-        return n
