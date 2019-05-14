@@ -3,4 +3,6 @@
 .DS_Store
 __pycache__
 example/output
+output/
 CIO.egg-info/
+build/
