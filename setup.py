@@ -10,7 +10,6 @@ setup(
     packages=['cio',],
     python_requires='>3',
     install_requires=[
-         'tkinter',
          'shutil',
          'tempfile',
          'imageio',
