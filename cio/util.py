@@ -48,6 +48,8 @@ c : float in [0,1]
 """
 Contact = namedtuple('Contact', 'f ro c')
 
+Goal = namedtuple('Goal', 'time constraint')
+
 def generate_world_traj(S, world, p):
     # get dyanamic and contact info from S
     dyn_info = {}
@@ -266,8 +268,8 @@ def visualize_result(world, goals, p, outfile, S=None):
 
         # find position goals and print
         for goal in goals:
-            if type(goal) == Position:
-                goal_circ = plt.Circle(goal[:2], 1., fc='g')
+            if type(goal.constraint) == Position:
+                goal_circ = plt.Circle(goal.constraint[:2], 1., fc='g')
                 plt.gca().add_patch(goal_circ)
 
         # plot the imbalance between contact forces and acceleration

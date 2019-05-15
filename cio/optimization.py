@@ -55,16 +55,16 @@ def L(S, goals, world, p, stage=0):
 
     def L_task(t, world_t):
         # task constraint: get object to desired pos
-        I = 1 if t == (p.T_steps-1) else 0
         task_cost = 0
         for goal in goals:
-            if type(goal) == Position:
+            I = 1 if t == (goal.time) else 0
+            if type(goal.constraint) == Position:
                 obj_pos = [world_t.manip_obj.pose.x, world_t.manip_obj.pose.y]
-                goal_pos = [goal.x, goal.y]
+                goal_pos = [goal.constraint.x, goal.constraint.y]
                 task_cost += I*np.linalg.norm(np.subtract(obj_pos, goal_pos))**2
-            elif type(goal) == LinearVelocity:
+            elif type(goal.constraint) == LinearVelocity:
                 obj_vel = [world_t.manip_obj.vel.x, world_t.manip_obj.vel.y]
-                goal_vel = [goal.x, goal.y]
+                goal_vel = [goal.constraint.x, goal.constraint.y]
                 task_cost += I*np.linalg.norm(np.subtract(obj_vel, goal_vel))**2
 
         # small acceleration constraint (supposed to keep hand accel small, but
