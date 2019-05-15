@@ -32,9 +32,7 @@ def L(S, goals, world, p, stage=0):
 
     def L_physics(t, world_t):
         # calculate sum of forces on object
-        f_tot = [0.0, 0.0]
-        for cont in world_t.contact_state.values():
-            f_tot = np.add(f_tot, cont.c*cont.f)
+        f_tot = world_t.sum_forces()
 
         # calc change in linear momentum
         oa = world_t.manip_obj.accel
