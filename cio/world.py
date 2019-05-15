@@ -4,7 +4,7 @@ from cio.util import calc_deriv, get_dist, normalize, stationary_traj, Position,
                             Pose, LinearVelocity, Velocity, Acceleration, Contact
 
 class World(object):
-    def __init__(self, manip_obj, fingers, contact_state, traj_func=stationary_traj):
+    def __init__(self, manip_obj, fingers, contact_state, traj_func=stationary_traj, static_objects=[]):
         """
         World Parameters
         -----
@@ -20,6 +20,8 @@ class World(object):
         self.contact_state = contact_state
         self.traj_func = traj_func
         self.s0 = self.get_vars()
+
+        self.static_objects = static_objects
 
         self.pi_O = {}
         self.pi_H = {}
@@ -71,6 +73,20 @@ class World(object):
 
     def get_all_objects(self):
         return [self.manip_obj] + self.fingers
+
+    def sum_forces(self):
+        f_tot = [0.0, 0.0]
+        for cont in self.contact_state.values():
+            f_tot = np.add(f_tot, np.multiply(cont.c,cont.f))
+
+        # only add gravity if object is NOT on top of a static object
+        for static_obj in self.static_objects:
+            top_static_obj = static_obj.pose.y + np.divide(static_obj.get_height(),2)
+            bottom_manip_obj = self.manip_obj.pose.y - np.divide(self.manip_obj.get_height(),2)
+            if bottom_manip_obj > top_static_obj:
+                f_tot = np.add(f_tot, [0., -10.])
+                break
+        return f_tot
 
 # world origin is left bottom with 0 deg being along the x-axis (+ going ccw), all poses are in world frame
 class Object(object):
@@ -181,6 +197,9 @@ class Rectangle(Object):
         super(Rectangle,self).__init__(pose, vel, step_size)
         self.lines = self.make_lines() # rectangles are made up of 4 line objects
 
+    def get_height(self):
+        return self.height
+
     def discretize(self):
         pass#TODO
 
@@ -241,6 +260,9 @@ class Circle(Object):
         pose = Pose(pos.x, pos.y, 0.0)
         vel = Velocity(vel.x, vel.y, 0.0)
         super(Circle,self).__init__(pose, vel, step_size)
+
+    def get_height(self):
+        return 2*self.radius
 
     def discretize(self):
         pass#TODO
