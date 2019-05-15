@@ -145,7 +145,7 @@ def get_contact_info(s0, S, p, ci, dyn_offset):
         ro_traj_T[:,(k-1)*p.steps_per_phase:k*p.steps_per_phase+1] = linspace_vectors(ro_left, ro_right, p.steps_per_phase+1)
 
         for t in range((k-1)*p.steps_per_phase,k*p.steps_per_phase+1):
-            c_traj_T[t] = c_traj_K[k]
+            c_traj_T[t] = c_traj_K[k-1]
 
     return f_traj_T, ro_traj_T, c_traj_T
 
@@ -231,12 +231,11 @@ def visualize_result(world, goals, p, outfile, S=None):
 
         object = world_t.manip_obj
 
-        f_contact = np.array([0.0, 0.0])
-        for cont in world_t.contact_state.values():
-            f_contact += cont.c*np.array(cont.f)
-
         obj_pose = object.pose
 
+        # for each contact object plot the object, a circle at the r value showing the
+        # c value, the force, and a line from the object to r which defines the
+        # friction cone
         for (cont_obj, cont) in world_t.contact_state.items():
             # get ro in world frame
             r = cont.ro + np.array([obj_pose.x, obj_pose.y])
@@ -250,27 +249,40 @@ def visualize_result(world, goals, p, outfile, S=None):
                 head_width=0.5, head_length=1., fc='k', ec='k')
 
             plt.plot([cont_obj.pose.x, r[0]], [cont_obj.pose.y, r[1]], c='black', linewidth=1.)
-        try:
-            rect = plt.Rectangle([obj_pose.x-object.width/2, obj_pose.y-object.height/2],
-                                                object.width, object.height, fc='r')
-            plt.gca().add_patch(rect)
-        except AttributeError:
-            circ = plt.Circle([obj_pose.x, obj_pose.y], object.radius, fc='r')
-            plt.gca().add_patch(circ)
 
-        # find position goal and print
+        # plot the manipulated object and the static objects in the environment
+        for obj in world_t.static_objects+[world_t.manip_obj]:
+            if obj==world_t.manip_obj:
+                color = 'r'
+            else:
+                color='b'
+            try:
+                rect = plt.Rectangle([obj.pose.x-obj.width/2, obj.pose.y-obj.height/2],
+                                                    obj.width, obj.height, fc=color)
+                plt.gca().add_patch(rect)
+            except:
+                circ = plt.Circle([obj.pose.x, obj.pose.y], obj.radius, fc=color)
+                plt.gca().add_patch(circ)
+
+        # find position goals and print
         for goal in goals:
             if type(goal) == Position:
                 goal_circ = plt.Circle(goal[:2], 1., fc='g')
                 plt.gca().add_patch(goal_circ)
 
-        '''
-        # plots the sum of the contact forces at object center
-        plt.arrow(obj_pose.x, obj_pose.y, f_contact[0], f_contact[1],
+        # plot the imbalance between contact forces and acceleration
+        f_tot = world_t.sum_forces()
+
+        if t==0:
+            accel = Acceleration(0., 0., 0.)
+        else:
+            accel = object.accel
+        imbal = np.subtract(f_tot, np.array([accel.x, accel.y]))
+        plt.arrow(obj_pose.x, obj_pose.y, imbal[0], imbal[1],
             head_width=0.5, head_length=1., fc='k', ec='k')
-        '''
+
         plt.xlim((-25., 25))
-        plt.ylim((-15., 30)) # the second arg (max) is set relative to xlim and ylim.min
+        plt.ylim((-5., 30)) # the second arg (max) is set relative to xlim and ylim.min
         plt.tight_layout()
         plt.axes().set_aspect('equal', 'datalim')
         image_filename = os.path.join(temp_dirpath, '{}.png'.format(t))
