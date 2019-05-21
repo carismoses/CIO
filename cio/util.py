@@ -224,7 +224,7 @@ def print_final(ci, phys, kinem, task):
     print('     task:           ', task)
     print('  TOTAL: ', ci + kinem + phys + task)
 
-def visualize_result(world, goals, p, outfile):
+def visualize_result(world, goals, p, outfile, S):
     world_traj = generate_world_traj(S, world, p)
 
     temp_dirpath = tempfile.mkdtemp()
