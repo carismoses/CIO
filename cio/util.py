@@ -219,16 +219,13 @@ def print_final(ci, phys, kinem, task):
     print('     task:           ', task)
     print('  TOTAL: ', ci + kinem + phys + task)
 
-def visualize_result(world, goals, p, outfile, S=None):
-    if S is None:
-        S = world.traj_func(world, goals, p)
+def visualize_result(world, goals, p, outfile):
     world_traj = generate_world_traj(S, world, p)
 
     temp_dirpath = tempfile.mkdtemp()
     image_filenames = []
 
-    worlds = [world] + world_traj
-    for (t,world_t) in enumerate(worlds):
+    for (t,world_t) in enumerate(world_traj):
         plt.figure()
 
         object = world_t.manip_obj
