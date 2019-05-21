@@ -106,7 +106,7 @@ def CIO(goals, world, p, single=False, start_stage=0, traj_data=None, gif_tag=''
     if start_stage == 0:
         S = add_noise(S)
     visualize_result(world, goals, p, 'initial'+gif_tag+'.gif', S)
-    tot_cost = L(S, goals, world, p)
+    tot_cost = L(S, goals, world, p, start_stage)
     print_final(*function_costs)
 
     bounds = get_bounds(world, p)
