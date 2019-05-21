@@ -65,12 +65,17 @@ def generate_world_traj(S, world, p):
 
     # fill into list of new worlds
     worlds = []
+    ### hard code contact states of 1 after this time ###
+    contact_t = round(p.T_steps/4)
+    c = 0.
     for t in range(p.T_steps+1):
         world_t = deepcopy(world)
         for i in range(len(world_t.get_all_objects())):
             world_t.set_dynamics(i,dyn_info[i][0][t], dyn_info[i][1][t], dyn_info[i][2][t])
         for ci in range(len(world_t.contact_state)):
-            world_t.set_contact_state(ci, cont_info[ci][0][:,t], cont_info[ci][1][:,t], cont_info[ci][2][t])
+            if t > contact_t:
+                c = 1.
+            world_t.set_contact_state(ci, cont_info[ci][0][:,t], cont_info[ci][1][:,t], c)
         if t == 0:
             world_t.set_e_vars(None, p)
         else:
