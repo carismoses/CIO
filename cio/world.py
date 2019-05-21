@@ -82,6 +82,7 @@ class World(object):
         # only add gravity if object is NOT on top of a static object
         for static_obj in self.static_objects:
             top_static_obj = static_obj.pose.y + np.divide(static_obj.get_height(),2)
+            ## TODO: this bottom calculation only works for circles or squares with no change in orientations
             bottom_manip_obj = self.manip_obj.pose.y - np.divide(self.manip_obj.get_height(),2)
             if bottom_manip_obj > top_static_obj:
                 f_tot = np.add(f_tot, [0., -10.])
