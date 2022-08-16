@@ -271,7 +271,7 @@ def visualize_result(world, goals, p, outfile, S=None):
         plt.xlim((-20., 30))
         plt.ylim((-10., 30)) # the second arg (max) is set relative to xlim and ylim.min
         plt.tight_layout()
-        plt.axes().set_aspect('equal', 'datalim')
+        #plt.axes().set_aspect('equal', 'datalim')
         image_filename = os.path.join(temp_dirpath, '{}.png'.format(t))
         plt.savefig(image_filename)
         plt.close()
