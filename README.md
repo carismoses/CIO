@@ -11,13 +11,8 @@ If you plan on frequently interacting with the source code, or you would like to
 ```
 git clone git@github.com:carismoses/CIO.git
 cd CIO
-python3 setup.py develop
+pip install -v -e.
 ```
-Installing the package this ways allows you to later uninstall with the following command
-```
-python3 setup.py develop --uninstall
-```
-(There is currently no equivalent for uninstalling if you use ```pip install -e .``` for the local installation)
 
 ### Git Installation
 If you just want to be able to import this package and don't plan on changing anything, you can perform the following installation
